@@ -1,2 +1,51 @@
 # Brisk Budget
-Simple, Modern & Lightweight Personal Finance Management Application
+
+A lightweight personal finance management web application for tracking household finances.
+
+<!-- Add screenshot here -->
+
+## Quick Start
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Start the server: `npm start`
+4. Open your browser to `http://localhost:3000`
+
+For development with auto-reload: `npm run dev`
+
+## Features
+
+- **Account Management** - Track multiple accounts (checking, savings, loans, investments, assets)
+- **Transaction Tracking** - Categorize and manage all your transactions with payees, notes, and descriptions
+- **Recurring Transactions** - Automate regular expenses and income with customizable schedules
+- **Inter-Account Transfers** - Link transactions between accounts seamlessly
+- **Categories & Subcategories** - Organize spending with pre-configured or custom categories
+- **Dashboard Analytics** - Visualize net worth, balance trends, and spending patterns
+- **Transaction Import** - Bulk import transactions
+- **Mobile Responsive** - Works on desktop and mobile devices
+- **PWA Support** - Install as a progressive web app
+
+## Data Storage
+
+All data is stored locally in JSON files in the `data/` directory. The application automatically creates this folder and initializes it on first run. No external database required.
+
+## Configuration
+
+All settings are managed through the application's settings page:
+- Currency symbol
+- Household name
+- Categories and subcategories
+
+## Tech Stack
+
+- **Backend:** Node.js with native HTTP module
+- **Frontend:** Vanilla JavaScript, CSS3
+- **Storage:** File-based JSON
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Author
+
+Ethan Copping
