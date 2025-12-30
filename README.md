@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/branding/dark/brisk-budget-logo.svg" alt="Brisk Budget Logo" width="400">
+  <img src="assets/branding/dark/brisk-budget-logo.svg" alt="Brisk Budget Logo" width="320">
 </p>
 
 A lightweight personal finance management web application for tracking household finances.
