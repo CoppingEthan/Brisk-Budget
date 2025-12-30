@@ -83,6 +83,9 @@ log_step "Fetching latest code from GitHub..."
 
 if [ "$IS_UPDATE" = true ]; then
     # Update existing installation
+    # Fix ownership issue - add safe directory for git operations
+    git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+
     cd "$APP_DIR"
 
     # Stash any local changes (like data files that shouldn't be there)
