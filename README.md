@@ -4,7 +4,25 @@ A lightweight personal finance management web application for tracking household
 
 <!-- Add screenshot here -->
 
-## Quick Start
+## Quick Deploy (Ubuntu)
+
+Install with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo bash
+```
+
+To update to the latest version, run the same command again.
+
+The script will:
+- Install Node.js and git if not present
+- Clone the repository to `/opt/brisk-budget`
+- Configure a systemd service for auto-start
+- Preserve your data when updating
+
+The app will be available at `http://localhost:3000`.
+
+## Manual Deploy
 
 1. Clone the repository
 2. Install dependencies: `npm install`
@@ -22,6 +40,7 @@ For development with auto-reload: `npm run dev`
 - **Categories & Subcategories** - Organize spending with pre-configured or custom categories
 - **Dashboard Analytics** - Visualize net worth, balance trends, and spending patterns
 - **Transaction Import** - Bulk import transactions
+- **Backup & Restore** - Download/restore data backups with automatic hourly backups
 - **Mobile Responsive** - Works on desktop and mobile devices
 - **PWA Support** - Install as a progressive web app
 
