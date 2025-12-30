@@ -1,8 +1,10 @@
-# Brisk Budget
+<p align="center">
+  <img src="assets/branding/dark/brisk-budget-logo.svg" alt="Brisk Budget Logo" width="400">
+</p>
 
 A lightweight personal finance management web application for tracking household finances.
 
-<!-- Add screenshot here -->
+![Brisk Budget Dashboard](assets/images/dashboard-screenshot.png)
 
 ## Quick Deploy (Ubuntu)
 
