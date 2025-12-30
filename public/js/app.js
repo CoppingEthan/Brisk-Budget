@@ -4,6 +4,7 @@ const App = {
 
   async init() {
     await this.loadSettings();
+    await Categories.load();
     await Accounts.load();
     await Recurring.load();
     this.bindEvents();
