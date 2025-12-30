@@ -211,6 +211,53 @@ const App = {
       });
     });
 
+    // Backup/Restore (Data tab)
+    document.getElementById('downloadBackupBtn').addEventListener('click', () => {
+      API.downloadBackup();
+    });
+
+    const restoreFileInput = document.getElementById('restoreFileInput');
+    const restoreFilename = document.getElementById('restoreFilename');
+    const restoreBtn = document.getElementById('restoreBackupBtn');
+
+    document.getElementById('selectRestoreFileBtn').addEventListener('click', () => {
+      restoreFileInput.click();
+    });
+
+    restoreFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        restoreFilename.textContent = file.name;
+        restoreBtn.disabled = false;
+      } else {
+        restoreFilename.textContent = '';
+        restoreBtn.disabled = true;
+      }
+    });
+
+    restoreBtn.addEventListener('click', () => {
+      const file = restoreFileInput.files[0];
+      if (!file) return;
+
+      this.confirm(
+        'Restore Backup',
+        'This will overwrite ALL existing data with the backup. This cannot be undone. Are you sure?',
+        async () => {
+          try {
+            const result = await API.restoreBackup(file);
+            if (result.success) {
+              alert('Backup restored successfully. The page will now reload.');
+              window.location.reload();
+            } else {
+              alert('Restore failed: ' + (result.error || 'Unknown error'));
+            }
+          } catch (err) {
+            alert('Restore failed: ' + err.message);
+          }
+        }
+      );
+    });
+
     // Settings form (Interface tab)
     document.getElementById('settingsForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -507,6 +554,7 @@ const App = {
     document.getElementById('settingsTabInterface').classList.toggle('active', tab === 'interface');
     document.getElementById('settingsTabCategories').classList.toggle('active', tab === 'categories');
     document.getElementById('settingsTabPayees').classList.toggle('active', tab === 'payees');
+    document.getElementById('settingsTabData').classList.toggle('active', tab === 'data');
   },
 
   confirm(title, message, onConfirm) {

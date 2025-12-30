@@ -1501,6 +1501,48 @@ form {
   padding: 0;
 }
 
+/* Data Tab */
+.data-section {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.data-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.data-section h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.data-section p {
+  margin: 0 0 1rem 0;
+}
+
+.data-section code {
+  background: var(--glass-lighter);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.restore-upload {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.restore-filename {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
 /* Categories */
 .categories-list {
   display: flex;

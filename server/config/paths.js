@@ -2,6 +2,7 @@ const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const TRANSACTIONS_DIR = path.join(DATA_DIR, 'transactions');
+const BACKUPS_DIR = path.join(__dirname, '..', '..', 'backups');
 
 const accountsFile = path.join(DATA_DIR, 'accounts.json');
 const categoriesFile = path.join(DATA_DIR, 'categories.json');
@@ -14,6 +15,7 @@ const getTransactionsFile = (accountId) => path.join(TRANSACTIONS_DIR, `${accoun
 module.exports = {
   DATA_DIR,
   TRANSACTIONS_DIR,
+  BACKUPS_DIR,
   accountsFile,
   categoriesFile,
   payeesFile,

@@ -10,6 +10,7 @@ const categories = require('./routes/categories');
 const payees = require('./routes/payees');
 const settings = require('./routes/settings');
 const recurring = require('./routes/recurring');
+const backup = require('./routes/backup');
 
 const router = (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -152,6 +153,16 @@ const router = (req, res) => {
       if (parts.length === 4 && parts[3] === 'skip') {
         const recurringId = parts[2];
         if (method === 'POST') return recurring.skipRecurring(req, res, recurringId);
+      }
+    }
+
+    // /api/backup
+    if (parts[1] === 'backup') {
+      if (parts.length === 2 && method === 'GET') {
+        return backup.downloadBackup(req, res);
+      }
+      if (parts.length === 3 && parts[2] === 'restore' && method === 'POST') {
+        return backup.restoreBackup(req, res);
       }
     }
 

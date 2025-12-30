@@ -24,5 +24,8 @@
   "repository": {
     "type": "git",
     "url": ""
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
   }
 }

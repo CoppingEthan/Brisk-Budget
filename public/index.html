@@ -358,6 +358,7 @@
           <button class="settings-nav-item active" data-tab="interface">Interface</button>
           <button class="settings-nav-item" data-tab="categories">Categories</button>
           <button class="settings-nav-item" data-tab="payees">Payees</button>
+          <button class="settings-nav-item" data-tab="data">Data</button>
         </nav>
         <div class="settings-content">
           <!-- Interface Tab -->
@@ -383,6 +384,28 @@
           <!-- Payees Tab -->
           <div class="settings-tab" id="settingsTabPayees">
             <div class="payees-container" id="payeesList"></div>
+          </div>
+          <!-- Data Tab -->
+          <div class="settings-tab" id="settingsTabData">
+            <div class="data-section">
+              <h4>Backup</h4>
+              <p class="text-muted">Download a backup of all your data as a ZIP file.</p>
+              <button type="button" class="btn btn-primary" id="downloadBackupBtn">Download Backup</button>
+            </div>
+            <div class="data-section">
+              <h4>Restore</h4>
+              <p class="text-muted">Restore your data from a previously downloaded backup. This will overwrite all existing data.</p>
+              <div class="restore-upload">
+                <input type="file" id="restoreFileInput" accept=".zip" style="display:none;">
+                <button type="button" class="btn btn-secondary" id="selectRestoreFileBtn">Select Backup File</button>
+                <span class="restore-filename" id="restoreFilename"></span>
+              </div>
+              <button type="button" class="btn btn-danger" id="restoreBackupBtn" disabled>Restore Backup</button>
+            </div>
+            <div class="data-section">
+              <h4>Automatic Backups</h4>
+              <p class="text-muted">Automatic backups are created hourly when changes are detected. The last 24 backups are kept in the <code>backups/</code> folder.</p>
+            </div>
           </div>
         </div>
       </div>

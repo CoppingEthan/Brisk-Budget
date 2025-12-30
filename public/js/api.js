@@ -288,5 +288,18 @@ const API = {
       headers: { 'Content-Type': 'application/json' }
     });
     return res.json();
+  },
+
+  // Backup
+  downloadBackup() {
+    window.location.href = '/api/backup';
+  },
+
+  async restoreBackup(file) {
+    const res = await fetch('/api/backup/restore', {
+      method: 'POST',
+      body: file
+    });
+    return res.json();
   }
 };
