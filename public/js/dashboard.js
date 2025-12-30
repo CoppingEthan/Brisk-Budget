@@ -995,16 +995,22 @@ const Dashboard = {
     }
 
     const width = container.clientWidth || 800;
-    const height = 514;
-    const padding = { top: 30, right: 30, bottom: 40, left: 30 };
-    const nodeWidth = 12;
+    // Responsive sizing for mobile
+    const isMobile = width < 500;
+    const height = isMobile ? 420 : 514;
+    const padding = isMobile
+      ? { top: 25, right: 10, bottom: 50, left: 10 }
+      : { top: 30, right: 30, bottom: 40, left: 30 };
+    const nodeWidth = isMobile ? 8 : 12;
     const centerX = width / 2;
-    const labelPadding = 120;
+    const labelPadding = isMobile ? 70 : 120;
     const leftX = padding.left + labelPadding;
     const rightX = width - padding.right - labelPadding;
+    const fontSize = isMobile ? { label: 9, amount: 7, title: 10, bottom: 9 } : { label: 12, amount: 10, title: 13, bottom: 13 };
+    const maxCategories = isMobile ? 6 : 8;
 
-    const incomeEntries = Object.entries(income).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    const expenseEntries = Object.entries(expenses).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const incomeEntries = Object.entries(income).sort((a, b) => b[1] - a[1]).slice(0, maxCategories);
+    const expenseEntries = Object.entries(expenses).sort((a, b) => b[1] - a[1]).slice(0, maxCategories);
 
     const availableHeight = height - padding.top - padding.bottom - 60; // More space for bottom labels
     const surplus = totalIncome - totalExpenses;
@@ -1128,10 +1134,10 @@ const Dashboard = {
 
         <!-- Income labels -->
         ${incomeNodes.map(n => `
-          <text x="${n.x - 10}" y="${n.y + n.height / 2}" text-anchor="end" dominant-baseline="middle"
-                fill="${n.color}" font-size="12" font-weight="600" font-family="system-ui">${n.category}</text>
-          <text x="${n.x - 10}" y="${n.y + n.height / 2 + 14}" text-anchor="end" dominant-baseline="middle"
-                fill="#94a3b8" font-size="10" font-family="system-ui">${App.formatCurrency(n.amount)}</text>
+          <text x="${n.x - (isMobile ? 6 : 10)}" y="${n.y + n.height / 2}" text-anchor="end" dominant-baseline="middle"
+                fill="${n.color}" font-size="${fontSize.label}" font-weight="600" font-family="system-ui">${n.category}</text>
+          <text x="${n.x - (isMobile ? 6 : 10)}" y="${n.y + n.height / 2 + (isMobile ? 10 : 14)}" text-anchor="end" dominant-baseline="middle"
+                fill="#94a3b8" font-size="${fontSize.amount}" font-family="system-ui">${App.formatCurrency(n.amount)}</text>
         `).join('')}
 
         <!-- Center node (green, no rounded corners) -->
@@ -1140,7 +1146,7 @@ const Dashboard = {
 
         <!-- Center label -->
         <text x="${centerX}" y="${centerNodeY - 12}" text-anchor="middle"
-              fill="#f1f5f9" font-size="13" font-weight="600" font-family="system-ui">Cash Flow</text>
+              fill="#f1f5f9" font-size="${fontSize.title}" font-weight="600" font-family="system-ui">Cash Flow</text>
 
         <!-- Expense nodes (rounded right side only) -->
         ${expenseNodes.map(n => `
@@ -1150,28 +1156,47 @@ const Dashboard = {
 
         <!-- Expense labels -->
         ${expenseNodes.map(n => `
-          <text x="${n.x + nodeWidth + 10}" y="${n.y + n.height / 2}" text-anchor="start" dominant-baseline="middle"
-                fill="${n.color}" font-size="12" font-weight="600" font-family="system-ui">${n.category}</text>
-          <text x="${n.x + nodeWidth + 10}" y="${n.y + n.height / 2 + 14}" text-anchor="start" dominant-baseline="middle"
-                fill="#94a3b8" font-size="10" font-family="system-ui">${App.formatCurrency(n.amount)}</text>
+          <text x="${n.x + nodeWidth + (isMobile ? 6 : 10)}" y="${n.y + n.height / 2}" text-anchor="start" dominant-baseline="middle"
+                fill="${n.color}" font-size="${fontSize.label}" font-weight="600" font-family="system-ui">${n.category}</text>
+          <text x="${n.x + nodeWidth + (isMobile ? 6 : 10)}" y="${n.y + n.height / 2 + (isMobile ? 10 : 14)}" text-anchor="start" dominant-baseline="middle"
+                fill="#94a3b8" font-size="${fontSize.amount}" font-family="system-ui">${App.formatCurrency(n.amount)}</text>
         `).join('')}
 
         <!-- Totals at bottom (positioned below the chart area) -->
+        ${isMobile ? `
+        <text x="${leftX + nodeWidth / 2}" y="${height - 28}" text-anchor="middle"
+              fill="#22c55e" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
+          In: ${App.formatCurrency(totalIncome)}
+        </text>
+        <text x="${centerX}" y="${height - 28}" text-anchor="middle"
+              fill="${surplusColor}" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
+          ${surplus >= 0 ? '+' : ''}${App.formatCurrency(surplus)}
+        </text>
+        <text x="${rightX + nodeWidth / 2}" y="${height - 28}" text-anchor="middle"
+              fill="#ef4444" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
+          Out: ${App.formatCurrency(totalExpenses)}
+        </text>
+        <text x="${centerX}" y="${height - 10}" text-anchor="middle"
+              fill="#64748b" font-size="8" font-family="system-ui">
+          ${hasForecast ? `Forecast: +${App.formatCurrency(forecastIncome)} / -${App.formatCurrency(forecastExpenses)}` : ''}
+        </text>
+        ` : `
         <text x="${leftX + nodeWidth / 2}" y="${height - 8}" text-anchor="middle"
-              fill="#22c55e" font-size="13" font-weight="700" font-family="system-ui">
+              fill="#22c55e" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
           Income: ${App.formatCurrency(totalIncome)}${hasForecast ? ` (+${App.formatCurrency(forecastIncome)})` : ''}
         </text>
         <text x="${centerX}" y="${height - 8}" text-anchor="middle"
-              fill="${surplusColor}" font-size="13" font-weight="700" font-family="system-ui">
+              fill="${surplusColor}" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
           ${surplus >= 0 ? 'Surplus' : 'Deficit'}: ${App.formatCurrency(Math.abs(surplus))}
         </text>
         <text x="${rightX + nodeWidth / 2}" y="${height - 8}" text-anchor="middle"
-              fill="#ef4444" font-size="13" font-weight="700" font-family="system-ui">
+              fill="#ef4444" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
           Expenses: ${App.formatCurrency(totalExpenses)}${hasForecast ? ` (+${App.formatCurrency(forecastExpenses)})` : ''}
         </text>
+        `}
 
-        <!-- Forecast indicator -->
-        ${hasForecast ? `
+        <!-- Forecast indicator (desktop only) -->
+        ${hasForecast && !isMobile ? `
           <text x="${width - padding.right}" y="${padding.top}" text-anchor="end"
                 fill="#94a3b8" font-size="11" font-style="italic" font-family="system-ui">
             Forecast: +${App.formatCurrency(forecastIncome - forecastExpenses)} net
