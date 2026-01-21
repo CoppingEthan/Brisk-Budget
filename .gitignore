@@ -134,3 +134,19 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# User data
+data/
+backups/
+
+# Windows Crap
+Thumbs.db
+
+# MacOS Crap
+.DS_Store
+
+# Adobe
+*.ai
+*.psd
+*.pbs
+*.indd

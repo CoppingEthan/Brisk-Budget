@@ -1,0 +1,31 @@
+{
+  "name": "personal-money",
+  "version": "1.0.0",
+  "description": "Brisk Budget - A lightweight personal finance management web application",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": [
+    "personal-finance",
+    "budget",
+    "budgeting",
+    "finance-tracker",
+    "money-management",
+    "expense-tracker",
+    "accounting",
+    "financial-planning",
+    "household-budget",
+    "pwa"
+  ],
+  "author": "Ethan Copping",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  }
+}

@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brisk Budget</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="Brisk Budget">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Mobile Header -->
+    <header class="mobile-header" id="mobileHeader">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+      <h1 class="mobile-title" id="mobileTitle">Brisk Budget</h1>
+    </header>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
+      <div class="sidebar-header">
+        <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close menu">&times;</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item nav-dashboard active" data-view="dashboard">
+          <img src="/images/brisk-budget-icon.svg" alt="" class="nav-dashboard-icon">
+          <span>Dashboard</span>
+        </a>
+        <div class="accounts-section">
+          <div class="accounts-header">
+            <h2>Accounts</h2>
+            <button class="add-account-btn" id="addAccountBtn" title="Add Account">+</button>
+          </div>
+          <div class="accounts-list" id="accountsList"></div>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-text" id="recurringBtn">Recurring</button>
+        <button class="btn-text" id="settingsBtn">Settings</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Dashboard View -->
+      <div class="view" id="dashboardView">
+        <div class="view-header dashboard-header">
+          <div class="dashboard-welcome">
+            <img src="/images/brisk-budget-icon.svg" alt="" class="dashboard-icon">
+            <div class="dashboard-greeting">
+              <h2>Welcome back</h2>
+              <p class="dashboard-subtitle">Here's your financial overview</p>
+            </div>
+          </div>
+        </div>
+        <div class="view-content dashboard-content">
+          <!-- Summary Cards -->
+          <div class="dashboard-cards">
+            <div class="dashboard-card">
+              <span class="dashboard-card-label">Net Worth</span>
+              <span class="dashboard-card-value" id="dashboardNetWorth">£0.00</span>
+            </div>
+            <div class="dashboard-card">
+              <span class="dashboard-card-label">Cash</span>
+              <span class="dashboard-card-value positive" id="dashboardCash">£0.00</span>
+            </div>
+            <div class="dashboard-card">
+              <span class="dashboard-card-label">Savings</span>
+              <span class="dashboard-card-value positive" id="dashboardSavings">£0.00</span>
+            </div>
+            <div class="dashboard-card">
+              <span class="dashboard-card-label">Debt</span>
+              <span class="dashboard-card-value negative" id="dashboardDebt">£0.00</span>
+            </div>
+          </div>
+
+          <!-- Balance Chart -->
+          <div class="dashboard-chart-container">
+            <div class="dashboard-chart-header">
+              <h3 id="balanceChartTitle">Cash in Hand</h3>
+              <div class="chart-controls">
+                <div class="chart-range-selector">
+                  <button class="chart-range-btn" data-range="1w">1W</button>
+                  <button class="chart-range-btn active" data-range="1m">1M</button>
+                  <button class="chart-range-btn" data-range="3m">3M</button>
+                  <button class="chart-range-btn" data-range="6m">6M</button>
+                  <button class="chart-range-btn" data-range="1y">1Y</button>
+                  <button class="chart-range-btn" data-range="5y">5Y</button>
+                </div>
+                <div class="chart-forecast-selector">
+                  <span class="forecast-label">Forecast:</span>
+                  <button class="chart-forecast-btn active" data-forecast="0">Off</button>
+                  <button class="chart-forecast-btn" data-forecast="1m">1M</button>
+                  <button class="chart-forecast-btn" data-forecast="3m">3M</button>
+                  <button class="chart-forecast-btn" data-forecast="6m">6M</button>
+                  <button class="chart-forecast-btn" data-forecast="1y">1Y</button>
+                  <button class="chart-forecast-btn" data-forecast="5y">5Y</button>
+                </div>
+              </div>
+            </div>
+            <div class="chart-account-toggles" id="chartAccountToggles"></div>
+            <div class="dashboard-chart" id="netWorthChart"></div>
+          </div>
+
+          <!-- Category Flow Sankey -->
+          <div class="dashboard-chart-container">
+            <div class="dashboard-chart-header">
+              <h3>Money Flow by Category</h3>
+              <div class="chart-controls">
+                <div class="chart-range-selector">
+                  <button class="chart-range-btn active" data-sankey-range="1m">1M</button>
+                  <button class="chart-range-btn" data-sankey-range="3m">3M</button>
+                  <button class="chart-range-btn" data-sankey-range="6m">6M</button>
+                  <button class="chart-range-btn" data-sankey-range="1y">1Y</button>
+                </div>
+                <div class="chart-forecast-selector">
+                  <span class="forecast-label">Forecast:</span>
+                  <button class="chart-forecast-btn active" data-sankey-forecast="0">Off</button>
+                  <button class="chart-forecast-btn" data-sankey-forecast="1m">1M</button>
+                  <button class="chart-forecast-btn" data-sankey-forecast="3m">3M</button>
+                  <button class="chart-forecast-btn" data-sankey-forecast="6m">6M</button>
+                  <button class="chart-forecast-btn" data-sankey-forecast="1y">1Y</button>
+                </div>
+              </div>
+            </div>
+            <div class="dashboard-chart sankey-chart" id="sankeyChart"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account View -->
+      <div class="view hidden" id="accountView">
+        <div class="account-scroll-wrapper">
+          <div class="account-header">
+            <div class="view-header-left">
+              <div class="view-title">
+                <div class="account-name-row">
+                  <h2 id="accountName">Account Name</h2>
+                </div>
+                <div class="account-badges">
+                  <span class="account-type-badge" id="accountTypeBadge">Bank</span>
+                  <span class="account-stat-badge" id="balanceBadge">
+                    <span class="stat-label">Balance</span>
+                    <span class="stat-value" id="accountBalance">£0.00</span>
+                  </span>
+                  <span class="account-stat-badge hidden" id="assetValueBadge">
+                    <span class="stat-label">Asset</span>
+                    <span class="stat-value" id="accountAssetValue">£0.00</span>
+                  </span>
+                  <span class="account-stat-badge hidden" id="equityBadge">
+                    <span class="stat-label">Equity</span>
+                    <span class="stat-value" id="accountEquity">£0.00</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-primary" id="addTransactionBtn">Add Transaction</button>
+              <button class="btn btn-secondary" id="transferBtn">Add Transfer</button>
+              <div class="account-settings-dropdown">
+                <button class="btn btn-icon" id="accountSettingsBtn" title="Account Settings">⚙</button>
+                <div class="account-settings-menu hidden" id="accountSettingsMenu">
+                  <button class="account-settings-item" id="importCsvBtn">Import CSV</button>
+                  <button class="account-settings-item" id="editAccountBtn">Edit Account</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        <div class="view-content">
+          <!-- Selection Toolbar -->
+          <div class="selection-toolbar hidden" id="selectionToolbar">
+            <div class="selection-info">
+              <span class="selection-count" id="selectedCount">0 selected</span>
+            </div>
+            <div class="selection-actions">
+              <button class="btn" id="convertToTransferBtn">Convert to Transfer</button>
+              <button class="btn hidden" id="unlinkTransferBtn">Unlink Transfer</button>
+              <button class="btn" id="deleteSelectedBtn">Delete</button>
+              <button class="btn" id="clearSelectionBtn">Clear</button>
+            </div>
+          </div>
+          <div class="transactions-list" id="transactionsList"></div>
+        </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Account Modal -->
+  <div class="modal hidden" id="accountModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="accountModalTitle">Add Account</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <form id="accountForm">
+        <div class="form-group">
+          <label>Account Icon (optional)</label>
+          <div class="icon-upload">
+            <div class="icon-preview" id="accountIconPreview">
+              <span class="icon-placeholder">+</span>
+            </div>
+            <input type="file" id="accountIconInput" accept="image/*" style="display:none;">
+            <div class="icon-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="uploadIconBtn">Upload</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="removeIconBtn" style="display:none;">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="accountNameInput">Account Name</label>
+          <input type="text" id="accountNameInput" required>
+        </div>
+        <div class="form-group">
+          <label for="accountTypeInput">Account Type</label>
+          <select id="accountTypeInput" required>
+            <option value="bank">Bank Account</option>
+            <option value="savings">Savings Account</option>
+            <option value="credit">Credit Card</option>
+            <option value="loan">Loan</option>
+            <option value="investment">Investment</option>
+            <option value="asset">Asset</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="startingBalanceInput">Starting Balance (optional)</label>
+          <input type="number" id="startingBalanceInput" step="0.01" value="0">
+        </div>
+        <div class="form-group hidden" id="assetValueGroup">
+          <label for="assetValueInput">Asset Value (optional)</label>
+          <input type="number" id="assetValueInput" step="0.01" value="0">
+          <small class="form-help">Current market value of the underlying asset</small>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger modal-delete hidden" id="deleteAccountModalBtn">Delete Account</button>
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Transaction Modal -->
+  <div class="modal hidden" id="transactionModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="transactionModalTitle">Add Transaction</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <form id="transactionForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="transactionPayee">Payee</label>
+            <input type="text" id="transactionPayee" list="payeeDatalist" required autocomplete="off">
+            <datalist id="payeeDatalist"></datalist>
+          </div>
+          <div class="form-group">
+            <label for="transactionAmount">Amount</label>
+            <input type="number" id="transactionAmount" step="0.01" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="transactionDate">Date</label>
+            <input type="date" id="transactionDate" required>
+          </div>
+          <div class="form-group">
+            <label for="transactionCategory">Category</label>
+            <select id="transactionCategory" required></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="transactionDescription">Description</label>
+          <input type="text" id="transactionDescription">
+        </div>
+        <div class="form-group">
+          <label for="transactionNotes">Notes</label>
+          <textarea id="transactionNotes" rows="2"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Transfer Modal -->
+  <div class="modal hidden" id="transferModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Transfer Between Accounts</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <form id="transferForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="transferFrom">From Account</label>
+            <select id="transferFrom" required></select>
+          </div>
+          <div class="form-group">
+            <label for="transferTo">To Account</label>
+            <select id="transferTo" required></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="transferAmount">Amount</label>
+            <input type="number" id="transferAmount" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label for="transferDate">Date</label>
+            <input type="date" id="transferDate" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="transferDescription">Description</label>
+          <input type="text" id="transferDescription">
+        </div>
+        <div class="form-group">
+          <label for="transferNotes">Notes</label>
+          <textarea id="transferNotes" rows="2"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal hidden" id="settingsModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>Settings</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <div class="settings-layout">
+        <nav class="settings-nav">
+          <button class="settings-nav-item active" data-tab="interface">Interface</button>
+          <button class="settings-nav-item" data-tab="categories">Categories</button>
+          <button class="settings-nav-item" data-tab="payees">Payees</button>
+          <button class="settings-nav-item" data-tab="data">Data</button>
+        </nav>
+        <div class="settings-content">
+          <!-- Interface Tab -->
+          <div class="settings-tab active" id="settingsTabInterface">
+            <form id="settingsForm">
+              <div class="form-group">
+                <label for="settingsName">Your Name</label>
+                <input type="text" id="settingsName" placeholder="Enter your name">
+              </div>
+              <div class="form-group">
+                <label for="currencySymbol">Currency Symbol</label>
+                <input type="text" id="currencySymbol" maxlength="3" required>
+              </div>
+              <div class="form-group">
+                <button type="submit" class="btn btn-primary">Save</button>
+              </div>
+            </form>
+          </div>
+          <!-- Categories Tab -->
+          <div class="settings-tab" id="settingsTabCategories">
+            <div class="categories-list" id="categoriesList"></div>
+          </div>
+          <!-- Payees Tab -->
+          <div class="settings-tab" id="settingsTabPayees">
+            <div class="payees-container" id="payeesList"></div>
+          </div>
+          <!-- Data Tab -->
+          <div class="settings-tab" id="settingsTabData">
+            <div class="data-section">
+              <h4>Backup</h4>
+              <p class="text-muted">Download a backup of all your data as a ZIP file.</p>
+              <button type="button" class="btn btn-primary" id="downloadBackupBtn">Download Backup</button>
+            </div>
+            <div class="data-section">
+              <h4>Restore</h4>
+              <p class="text-muted">Restore your data from a previously downloaded backup. This will overwrite all existing data.</p>
+              <div class="restore-upload">
+                <input type="file" id="restoreFileInput" accept=".zip" style="display:none;">
+                <button type="button" class="btn btn-secondary" id="selectRestoreFileBtn">Select Backup File</button>
+                <span class="restore-filename" id="restoreFilename"></span>
+              </div>
+              <button type="button" class="btn btn-danger" id="restoreBackupBtn" disabled>Restore Backup</button>
+            </div>
+            <div class="data-section">
+              <h4>Automatic Backups</h4>
+              <p class="text-muted">Automatic backups are created hourly when changes are detected. The last 24 backups are kept in the <code>backups/</code> folder.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Delete Modal -->
+  <div class="modal hidden" id="categoryDeleteModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3>Delete Category</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="categoryDeleteMessage">Select a replacement category for existing transactions:</p>
+        <div class="form-group">
+          <select id="replacementCategory" required></select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" id="categoryDeleteConfirmBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Edit Modal -->
+  <div class="modal hidden" id="categoryEditModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3 id="categoryEditModalTitle">Add Category</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <form id="categoryEditForm">
+        <input type="hidden" id="categoryEditId">
+        <input type="hidden" id="categoryEditType" value="category">
+        <input type="hidden" id="categoryEditParentId">
+        <div class="form-group" id="categoryEmojiGroup">
+          <label for="categoryEditEmoji">Emoji</label>
+          <input type="text" id="categoryEditEmoji" maxlength="2" placeholder="📁" class="emoji-input">
+        </div>
+        <div class="form-group">
+          <label for="categoryEditName">Name</label>
+          <input type="text" id="categoryEditName" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Payee Edit Modal -->
+  <div class="modal hidden" id="payeeEditModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3 id="payeeEditModalTitle">Add Payee</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <form id="payeeEditForm">
+        <div class="form-group">
+          <label for="payeeEditName">Payee Name</label>
+          <input type="text" id="payeeEditName" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Payee Delete Modal -->
+  <div class="modal hidden" id="payeeDeleteModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3>Delete Payee</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="payeeDeleteMessage">Select a replacement payee for existing transactions:</p>
+        <div class="form-group">
+          <select id="replacementPayee" required></select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" id="payeeDeleteConfirmBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal hidden" id="confirmModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3 id="confirmTitle">Confirm</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage">Are you sure?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Convert to Transfer Modal -->
+  <div class="modal hidden" id="convertToTransferModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Convert to Transfer</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Convert the selected transaction(s) to a transfer between accounts.</p>
+        <div class="form-group">
+          <label for="convertTargetAccount">Link to Account</label>
+          <select id="convertTargetAccount" required></select>
+        </div>
+        <p class="text-muted" id="convertPreview"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmConvertBtn">Convert</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import CSV Modal -->
+  <div class="modal hidden" id="importModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>Import Transactions from CSV</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <div class="import-content">
+        <!-- Step 1: File Selection -->
+        <div class="form-group">
+          <label for="csvFileInput">Select CSV File</label>
+          <input type="file" id="csvFileInput" accept=".csv">
+        </div>
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" id="csvHasHeaders" checked>
+            First row contains column headers
+          </label>
+        </div>
+
+        <!-- Step 2: Column Mapping (shown after file loaded) -->
+        <div id="columnMappingSection" class="hidden">
+          <h4>Map Columns</h4>
+          <div class="column-mapping-grid" id="columnMappingGrid"></div>
+        </div>
+
+        <!-- Step 2.5: Date Format -->
+        <div id="dateFormatSection" class="hidden">
+          <div class="form-group">
+            <label for="dateFormatSelect">Date Format</label>
+            <select id="dateFormatSelect">
+              <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
+              <option value="DD/MM/YYYY">DD/MM/YYYY (UK)</option>
+              <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
+              <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 3: Preview -->
+        <div id="previewSection" class="hidden">
+          <h4>Preview</h4>
+          <div class="import-preview">
+            <table id="importPreviewTable"></table>
+          </div>
+          <p class="import-count" id="importCount">0 transactions to import</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="importBtn" disabled>Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recurring List Modal -->
+  <div class="modal hidden" id="recurringListModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-medium">
+      <div class="modal-header">
+        <h3>Recurring Payments</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="recurring-list-container" id="recurringListContainer">
+          <p class="empty-state">No recurring payments</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel">Close</button>
+        <button type="button" class="btn btn-primary" id="addRecurringBtn">+ Add Recurring</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recurring Payment Modal (Add/Edit) -->
+  <div class="modal hidden" id="recurringModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 id="recurringModalTitle">Add Recurring Payment</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <form id="recurringForm">
+        <div class="form-group">
+          <label>Type</label>
+          <div class="radio-group-inline">
+            <label><input type="radio" name="recurringType" value="transaction" checked> Transaction</label>
+            <label><input type="radio" name="recurringType" value="transfer"> Transfer</label>
+          </div>
+        </div>
+
+        <!-- Transaction Fields -->
+        <div id="recurringTransactionFields">
+          <div class="form-group">
+            <label for="recurringAccount">Account</label>
+            <select id="recurringAccount" required></select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="recurringPayee">Payee</label>
+              <input type="text" id="recurringPayee" list="recurringPayeeDatalist" required autocomplete="off">
+              <datalist id="recurringPayeeDatalist"></datalist>
+            </div>
+            <div class="form-group">
+              <label for="recurringAmount">Amount</label>
+              <input type="number" id="recurringAmount" step="0.01" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="recurringCategory">Category</label>
+            <select id="recurringCategory" required></select>
+          </div>
+        </div>
+
+        <!-- Transfer Fields -->
+        <div id="recurringTransferFields" class="hidden">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="recurringFromAccount">From Account</label>
+              <select id="recurringFromAccount"></select>
+            </div>
+            <div class="form-group">
+              <label for="recurringToAccount">To Account</label>
+              <select id="recurringToAccount"></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="recurringTransferAmount">Amount</label>
+            <input type="number" id="recurringTransferAmount" step="0.01">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="recurringDescription">Description</label>
+          <input type="text" id="recurringDescription">
+        </div>
+
+        <div class="form-section">
+          <h4>Frequency</h4>
+          <div class="frequency-presets">
+            <label><input type="radio" name="frequencyPreset" value="weekly"> Weekly</label>
+            <label><input type="radio" name="frequencyPreset" value="fortnightly"> Fortnightly</label>
+            <label><input type="radio" name="frequencyPreset" value="monthly" checked> Monthly</label>
+            <label><input type="radio" name="frequencyPreset" value="quarterly"> Quarterly</label>
+            <label><input type="radio" name="frequencyPreset" value="yearly"> Yearly</label>
+            <label><input type="radio" name="frequencyPreset" value="custom"> Custom</label>
+          </div>
+          <div class="custom-frequency hidden" id="customFrequency">
+            <span>Every</span>
+            <input type="number" id="frequencyInterval" value="1" min="1" style="width: 60px;">
+            <select id="frequencyType">
+              <option value="days">Days</option>
+              <option value="weeks">Weeks</option>
+              <option value="months" selected>Months</option>
+              <option value="years">Years</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="recurringStartDate">Start Date</label>
+          <input type="date" id="recurringStartDate" required>
+        </div>
+
+        <div class="form-section">
+          <h4>End Condition</h4>
+          <div class="end-condition-options">
+            <label><input type="radio" name="endCondition" value="never" checked> Never</label>
+            <label>
+              <input type="radio" name="endCondition" value="after_occurrences"> After
+              <input type="number" id="endAfterCount" value="12" min="1" style="width: 60px;" disabled>
+              occurrences
+            </label>
+            <label>
+              <input type="radio" name="endCondition" value="on_date"> On date
+              <input type="date" id="endOnDate" disabled>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger modal-delete hidden" id="deleteRecurringBtn">Delete</button>
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/accounts.js"></script>
+  <script src="/js/transactions.js"></script>
+  <script src="/js/categories.js"></script>
+  <script src="/js/payees.js"></script>
+  <script src="/js/import.js"></script>
+  <script src="/js/recurring.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
