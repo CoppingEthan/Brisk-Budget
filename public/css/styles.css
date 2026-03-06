@@ -335,18 +335,6 @@ body::before {
   opacity: 0.4;
 }
 
-.account-group-chevron {
-  font-size: 0.5rem;
-  color: var(--text-muted);
-  transition: transform 0.2s;
-  width: 0.75rem;
-  flex-shrink: 0;
-}
-
-.account-group.expanded .account-group-chevron {
-  transform: rotate(90deg);
-}
-
 .account-group-icon {
   width: clamp(24px, 5vw, 28px);
   height: clamp(24px, 5vw, 28px);
@@ -365,11 +353,8 @@ body::before {
 }
 
 .account-group-name {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;

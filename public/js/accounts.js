@@ -111,7 +111,6 @@ const Accounts = {
           <div class="account-group ${expandedClass}" data-group-id="${group.id}" draggable="true">
             <div class="account-group-header" data-group-id="${group.id}">
               <div class="drag-handle">&#8942;&#8942;</div>
-              <span class="account-group-chevron">&#9656;</span>
               ${groupIconHtml}
               <span class="account-group-name">${group.name}</span>
               <span class="account-group-balance ${balanceClass}">${App.formatCurrency(groupBalance)}</span>
