@@ -14,7 +14,11 @@ Install with a single command:
 curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo bash
 ```
 
-To update to the latest version, run the same command again.
+To update to the latest version, run the same command again. To deploy the dev branch:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo BRANCH=dev bash
+```
 
 The script will:
 - Install Node.js and git if not present

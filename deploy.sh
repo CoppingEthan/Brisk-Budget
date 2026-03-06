@@ -17,6 +17,7 @@ APP_USER="brisk-budget"
 APP_PORT="${PORT:-3000}"
 NODE_VERSION="20"
 REPO_URL="https://github.com/CoppingEthan/Brisk-Budget.git"
+BRANCH="${BRANCH:-main}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -93,14 +94,15 @@ if [ "$IS_UPDATE" = true ]; then
 
     # Pull latest changes
     git fetch origin
-    git reset --hard origin/main
+    git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
+    git reset --hard "origin/$BRANCH"
 
     log_info "Code updated to latest version"
 else
     # Fresh install - clone repository
     log_info "Cloning repository..."
     rm -rf "$APP_DIR"
-    git clone "$REPO_URL" "$APP_DIR"
+    git clone -b "$BRANCH" "$REPO_URL" "$APP_DIR"
     cd "$APP_DIR"
 fi
 
@@ -191,4 +193,7 @@ echo "  Status:         systemctl status ${APP_NAME}"
 echo ""
 echo "To update in the future, run the same install command:"
 echo "  curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo bash"
+echo ""
+echo "To deploy the dev branch instead:"
+echo "  curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo BRANCH=dev bash"
 echo ""
