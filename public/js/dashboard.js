@@ -1304,7 +1304,6 @@ const Dashboard = {
     document.getElementById('sankeyEndDate')?.addEventListener('change', (e) => {
       this.sankeyEndDate = new Date(e.target.value + 'T23:59:59');
       this.renderSankeyChart();
-      });
     });
 
     let resizeTimeout;
