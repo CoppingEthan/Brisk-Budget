@@ -40,7 +40,12 @@
         <div class="accounts-section">
           <div class="accounts-header">
             <h2>Accounts</h2>
-            <button class="add-account-btn" id="addAccountBtn" title="Add Account">+</button>
+            <div class="accounts-header-actions">
+              <button class="add-group-btn" id="addGroupBtn" title="Create Group">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              </button>
+              <button class="add-account-btn" id="addAccountBtn" title="Add Account">+</button>
+            </div>
           </div>
           <div class="accounts-list" id="accountsList"></div>
         </div>
@@ -254,6 +259,43 @@
     </div>
   </div>
 
+  <!-- Account Group Modal -->
+  <div class="modal hidden" id="accountGroupModal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3 id="accountGroupModalTitle">Create Group</h3>
+        <button class="btn-icon modal-close">&times;</button>
+      </div>
+      <form id="accountGroupForm">
+        <div class="form-group">
+          <label for="groupNameInput">Group Name</label>
+          <input type="text" id="groupNameInput" required>
+        </div>
+        <div class="form-group">
+          <label>Group Icon (optional)</label>
+          <div class="icon-upload">
+            <div class="icon-preview" id="groupIconPreview">
+              <span class="icon-placeholder">+</span>
+            </div>
+            <input type="file" id="groupIconInput" accept="image/*" style="display:none;">
+            <div class="icon-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="uploadGroupIconBtn">Upload</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="removeGroupIconBtn" style="display:none;">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger modal-delete hidden" id="deleteGroupModalBtn">Delete Group</button>
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Transaction Modal -->
   <div class="modal hidden" id="transactionModal">
     <div class="modal-backdrop"></div>
@@ -371,6 +413,14 @@
               <div class="form-group">
                 <label for="currencySymbol">Currency Symbol</label>
                 <input type="text" id="currencySymbol" maxlength="3" required>
+              </div>
+              <div class="form-group" id="groupChartTogglesGroup">
+                <label for="groupChartToggles">Dashboard Chart</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="groupChartToggles">
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Group accounts by account group</span>
+                </label>
               </div>
               <div class="form-group">
                 <button type="submit" class="btn btn-primary">Save</button>

@@ -104,6 +104,62 @@ const App = {
       Accounts.updateIconPreview();
     });
 
+    // Add Group button
+    document.getElementById('addGroupBtn').addEventListener('click', () => {
+      Accounts.showGroupModal();
+    });
+
+    // Account Group Modal
+    this.bindModal('accountGroupModal', 'accountGroupForm', async (form) => {
+      const formData = {
+        name: form.querySelector('#groupNameInput').value
+      };
+      await Accounts.saveGroup(formData);
+    });
+
+    // Group Icon Upload
+    const groupIconInput = document.getElementById('groupIconInput');
+    const groupIconPreview = document.getElementById('groupIconPreview');
+
+    document.getElementById('uploadGroupIconBtn').addEventListener('click', () => {
+      groupIconInput.click();
+    });
+
+    groupIconPreview.addEventListener('click', () => {
+      groupIconInput.click();
+    });
+
+    groupIconInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        try {
+          Accounts.pendingGroupIcon = await Accounts.processIconFile(file);
+          Accounts.updateGroupIconPreview();
+        } catch (err) {
+          console.error('Error processing icon:', err);
+          alert('Failed to process image. Please try a different file.');
+        }
+      }
+      groupIconInput.value = '';
+    });
+
+    document.getElementById('removeGroupIconBtn').addEventListener('click', () => {
+      Accounts.pendingGroupIcon = null;
+      Accounts.updateGroupIconPreview();
+    });
+
+    // Delete Group button (in group modal)
+    document.getElementById('deleteGroupModalBtn').addEventListener('click', () => {
+      if (!Accounts.editingGroupId) return;
+      const group = Accounts.groups.find(g => g.id === Accounts.editingGroupId);
+      document.getElementById('accountGroupModal').classList.add('hidden');
+      this.confirm(
+        'Delete Group',
+        `Delete group "${group ? group.name : ''}"? Accounts in this group will become ungrouped.`,
+        () => Accounts.deleteGroup(Accounts.editingGroupId)
+      );
+    });
+
     // Account Settings dropdown
     const accountSettingsBtn = document.getElementById('accountSettingsBtn');
     const accountSettingsMenu = document.getElementById('accountSettingsMenu');
@@ -264,7 +320,8 @@ const App = {
       e.preventDefault();
       const formData = {
         name: document.getElementById('settingsName').value,
-        currencySymbol: document.getElementById('currencySymbol').value
+        currencySymbol: document.getElementById('currencySymbol').value,
+        groupChartToggles: document.getElementById('groupChartToggles').checked
       };
       await API.updateSettings(formData);
       await this.loadSettings();
@@ -535,6 +592,9 @@ const App = {
   async showSettings() {
     document.getElementById('settingsName').value = this.settings.name || '';
     document.getElementById('currencySymbol').value = this.settings.currencySymbol;
+    // Group chart toggles setting
+    document.getElementById('groupChartToggles').checked = this.settings.groupChartToggles !== false;
+    document.getElementById('groupChartTogglesGroup').classList.remove('hidden');
     // Load and render categories
     await Categories.load();
     Categories.render();

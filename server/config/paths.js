@@ -5,6 +5,7 @@ const TRANSACTIONS_DIR = path.join(DATA_DIR, 'transactions');
 const BACKUPS_DIR = path.join(__dirname, '..', '..', 'backups');
 
 const accountsFile = path.join(DATA_DIR, 'accounts.json');
+const accountGroupsFile = path.join(DATA_DIR, 'account-groups.json');
 const categoriesFile = path.join(DATA_DIR, 'categories.json');
 const payeesFile = path.join(DATA_DIR, 'payees.json');
 const recurringFile = path.join(DATA_DIR, 'recurring.json');
@@ -17,6 +18,7 @@ module.exports = {
   TRANSACTIONS_DIR,
   BACKUPS_DIR,
   accountsFile,
+  accountGroupsFile,
   categoriesFile,
   payeesFile,
   recurringFile,

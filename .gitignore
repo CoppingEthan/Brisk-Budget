@@ -135,6 +135,9 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# Claude Code
+.claude/
+
 # User data
 data/
 backups/

@@ -38,6 +38,53 @@ const API = {
     return res.json();
   },
 
+  // Account Groups
+  async getAccountGroups() {
+    const res = await fetch('/api/account-groups');
+    return res.json();
+  },
+
+  async createAccountGroup(data) {
+    const res = await fetch('/api/account-groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
+  async updateAccountGroup(id, data) {
+    const res = await fetch(`/api/account-groups/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
+  async deleteAccountGroup(id) {
+    const res = await fetch(`/api/account-groups/${id}`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  async reorderAccountGroups(order) {
+    const res = await fetch('/api/account-groups/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order })
+    });
+    return res.json();
+  },
+
+  async setAccountGroup(accountId, groupId) {
+    const res = await fetch('/api/account-groups/set-account', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountId, groupId })
+    });
+    return res.json();
+  },
+
   // Transactions
   async getTransactions(accountId) {
     const res = await fetch(`/api/accounts/${accountId}/transactions`);

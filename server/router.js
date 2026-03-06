@@ -10,6 +10,7 @@ const categories = require('./routes/categories');
 const payees = require('./routes/payees');
 const settings = require('./routes/settings');
 const recurring = require('./routes/recurring');
+const accountGroups = require('./routes/account-groups');
 const backup = require('./routes/backup');
 
 const router = (req, res) => {
@@ -67,6 +68,25 @@ const router = (req, res) => {
         const accountId = parts[2];
         const transactionId = parts[4];
         if (method === 'POST') return transactions.convertToTransaction(req, res, accountId, transactionId);
+      }
+    }
+
+    // /api/account-groups
+    if (parts[1] === 'account-groups') {
+      if (parts.length === 2) {
+        if (method === 'GET') return accountGroups.getAccountGroups(req, res);
+        if (method === 'POST') return accountGroups.createAccountGroup(req, res);
+      }
+      if (parts.length === 3 && parts[2] === 'reorder') {
+        if (method === 'PUT') return accountGroups.reorderAccountGroups(req, res);
+      }
+      if (parts.length === 3 && parts[2] === 'set-account') {
+        if (method === 'PUT') return accountGroups.setAccountGroup(req, res);
+      }
+      if (parts.length === 3) {
+        const groupId = parts[2];
+        if (method === 'PUT') return accountGroups.updateAccountGroup(req, res, groupId);
+        if (method === 'DELETE') return accountGroups.deleteAccountGroup(req, res, groupId);
       }
     }
 

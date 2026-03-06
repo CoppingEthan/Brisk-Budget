@@ -32,6 +32,7 @@ const initializeData = () => {
 
   // Initialize data files if they don't exist
   initDataFile('accounts.json', []);
+  initDataFile('account-groups.json', []);
   initDataFile('categories.json', defaultCategories);
   initDataFile('payees.json', []);
   initDataFile('recurring.json', []);

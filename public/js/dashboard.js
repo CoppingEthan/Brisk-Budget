@@ -95,26 +95,136 @@ const Dashboard = {
     localStorage.setItem('chartSelectedAccounts', JSON.stringify(this.selectedAccounts));
   },
 
+  renderAccountToggle(account) {
+    const isActive = this.selectedAccounts.includes(account.id);
+    const iconHtml = account.icon
+      ? `<img src="${account.icon}" alt="">`
+      : `<span>${account.name.charAt(0)}</span>`;
+
+    return `
+      <button class="account-toggle ${isActive ? 'active' : ''}" data-account-id="${account.id}">
+        <span class="account-toggle-icon">${iconHtml}</span>
+        <span class="account-toggle-name">${account.name}</span>
+      </button>
+    `;
+  },
+
   renderAccountToggles() {
     const container = document.getElementById('chartAccountToggles');
     if (!container) return;
 
-    container.innerHTML = Accounts.list.map(account => {
-      const isActive = this.selectedAccounts.includes(account.id);
-      const iconHtml = account.icon
-        ? `<img src="${account.icon}" alt="">`
-        : `<span>${account.name.charAt(0)}</span>`;
+    const useGroups = App.settings.groupChartToggles !== false && Accounts.groups && Accounts.groups.length > 0;
 
-      return `
-        <button class="account-toggle ${isActive ? 'active' : ''}" data-account-id="${account.id}">
-          <span class="account-toggle-icon">${iconHtml}</span>
-          <span class="account-toggle-name">${account.name}</span>
-        </button>
-      `;
-    }).join('');
+    if (useGroups) {
+      const groupedAccountIds = new Set();
+      Accounts.groups.forEach(g => {
+        Accounts.list.filter(a => a.groupId === g.id).forEach(a => groupedAccountIds.add(a.id));
+      });
 
-    // Add click handlers
-    container.querySelectorAll('.account-toggle').forEach(btn => {
+      let html = '';
+
+      // Render groups
+      for (const group of Accounts.groups) {
+        const children = Accounts.list.filter(a => a.groupId === group.id);
+        if (children.length === 0) continue;
+
+        const childIds = children.map(a => a.id);
+        const selectedCount = childIds.filter(id => this.selectedAccounts.includes(id)).length;
+        const allSelected = selectedCount === childIds.length;
+        const noneSelected = selectedCount === 0;
+        const partial = !allSelected && !noneSelected;
+
+        html += `
+          <div class="chart-toggle-group" data-group-id="${group.id}">
+            <button class="account-toggle chart-toggle-group-btn ${noneSelected ? '' : 'active'} ${partial ? 'chart-toggle-partial' : ''}" data-group-id="${group.id}">
+              <span class="account-toggle-name">${group.name}</span>
+              <span class="group-chevron">▼</span>
+            </button>
+            <div class="chart-toggle-dropdown">
+              ${children.map(a => `
+                <label>
+                  <input type="checkbox" data-account-id="${a.id}" ${this.selectedAccounts.includes(a.id) ? 'checked' : ''}>
+                  ${a.name}
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // Render ungrouped accounts
+      Accounts.list.filter(a => !groupedAccountIds.has(a.id)).forEach(account => {
+        html += this.renderAccountToggle(account);
+      });
+
+      container.innerHTML = html;
+
+      // Group pill click: toggle all children
+      container.querySelectorAll('.chart-toggle-group-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          // If clicking chevron, toggle dropdown instead
+          if (e.target.classList.contains('group-chevron')) {
+            const groupEl = btn.closest('.chart-toggle-group');
+            groupEl.classList.toggle('expanded');
+            e.stopPropagation();
+            return;
+          }
+
+          const groupId = btn.dataset.groupId;
+          const children = Accounts.list.filter(a => a.groupId === groupId);
+          const childIds = children.map(a => a.id);
+          const allSelected = childIds.every(id => this.selectedAccounts.includes(id));
+
+          if (allSelected) {
+            // Deselect all
+            this.selectedAccounts = this.selectedAccounts.filter(id => !childIds.includes(id));
+          } else {
+            // Select all
+            childIds.forEach(id => {
+              if (!this.selectedAccounts.includes(id)) {
+                this.selectedAccounts.push(id);
+              }
+            });
+          }
+
+          this.saveAccountSelection();
+          this.renderAccountToggles();
+          this.renderNetWorthChart();
+        });
+      });
+
+      // Individual checkboxes in dropdown
+      container.querySelectorAll('.chart-toggle-dropdown input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const accountId = cb.dataset.accountId;
+          if (cb.checked) {
+            if (!this.selectedAccounts.includes(accountId)) {
+              this.selectedAccounts.push(accountId);
+            }
+          } else {
+            this.selectedAccounts = this.selectedAccounts.filter(id => id !== accountId);
+          }
+          this.saveAccountSelection();
+          this.renderAccountToggles();
+          this.renderNetWorthChart();
+        });
+      });
+
+      // Close dropdowns when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.chart-toggle-group')) {
+          container.querySelectorAll('.chart-toggle-group.expanded').forEach(el => {
+            el.classList.remove('expanded');
+          });
+        }
+      });
+    } else {
+      // Standard ungrouped rendering
+      container.innerHTML = Accounts.list.map(account => this.renderAccountToggle(account)).join('');
+    }
+
+    // Add click handlers for individual account toggles
+    container.querySelectorAll('.account-toggle:not(.chart-toggle-group-btn)').forEach(btn => {
       btn.addEventListener('click', () => {
         const accountId = btn.dataset.accountId;
         this.toggleAccount(accountId);

@@ -280,6 +280,249 @@ body::before {
   margin-top: -2px;
 }
 
+/* Account Groups */
+.accounts-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.add-group-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.add-group-btn:hover {
+  color: var(--text);
+}
+
+.account-group {
+  margin: 0.125rem 0;
+}
+
+.account-group-header {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 0 12px 12px 0;
+  margin-right: 0.75rem;
+  position: relative;
+  user-select: none;
+  gap: 0.375rem;
+}
+
+.account-group-header:hover {
+  background: var(--glass-lighter);
+}
+
+.account-group-header .drag-handle {
+  position: absolute;
+  left: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.account-group-header:hover .drag-handle {
+  opacity: 0.4;
+}
+
+.account-group-chevron {
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  width: 0.75rem;
+  flex-shrink: 0;
+}
+
+.account-group.expanded .account-group-chevron {
+  transform: rotate(90deg);
+}
+
+.account-group-icon {
+  width: clamp(24px, 5vw, 28px);
+  height: clamp(24px, 5vw, 28px);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-group-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-group-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.account-group-balance {
+  font-size: 0.7rem;
+  color: var(--text-light);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.account-group-balance.negative {
+  color: var(--danger);
+}
+
+.account-group-balance.positive {
+  color: var(--success);
+}
+
+.account-group-actions {
+  display: flex;
+  gap: 0.125rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.account-group-header:hover .account-group-actions {
+  opacity: 1;
+}
+
+.account-group-actions .btn-icon {
+  font-size: 0.625rem;
+  padding: 0.125rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.account-group-actions .btn-icon:hover {
+  color: var(--text);
+}
+
+.account-group-actions .btn-danger:hover {
+  color: var(--danger);
+}
+
+.account-group-children {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.25s ease;
+}
+
+.account-group.expanded .account-group-children {
+  max-height: 2000px;
+}
+
+.account-group-children .account-item {
+  padding-left: 2.25rem;
+}
+
+.account-group-children .account-item .drag-handle {
+  left: 0.75rem;
+}
+
+.account-group-empty {
+  padding: 0.375rem 2.25rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.account-group.dragging {
+  opacity: 0.5;
+}
+
+.account-group-header.drag-over {
+  background: var(--primary-glow);
+  outline: 1px dashed var(--primary);
+  outline-offset: -1px;
+}
+
+.account-group.drag-over-top {
+  border-top: 2px solid var(--primary);
+}
+
+/* Chart group toggle dropdown */
+.chart-toggle-group {
+  position: relative;
+  display: inline-flex;
+}
+
+.chart-toggle-group-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.chart-toggle-group-btn .group-chevron {
+  font-size: 0.5rem;
+  transition: transform 0.2s;
+}
+
+.chart-toggle-group.expanded .group-chevron {
+  transform: rotate(180deg);
+}
+
+.chart-toggle-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  min-width: 160px;
+  z-index: 100;
+  box-shadow: var(--shadow);
+  display: none;
+}
+
+.chart-toggle-group.expanded .chart-toggle-dropdown {
+  display: block;
+}
+
+.chart-toggle-dropdown label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.375rem;
+  font-size: 0.75rem;
+  color: var(--text-light);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.chart-toggle-dropdown label:hover {
+  background: var(--glass-lighter);
+}
+
+.chart-toggle-partial {
+  opacity: 0.6;
+}
+
 .sidebar-footer {
   padding: 1.25rem 1.5rem;
   border-top: 1px solid var(--glass-border);
@@ -1651,6 +1894,68 @@ form {
   width: 18px;
   height: 18px;
   accent-color: var(--primary);
+}
+
+.form-group .toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  background: var(--glass-lighter);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  transition: all 0.2s;
+  margin-bottom: 0;
+  font-weight: 400;
+}
+
+.toggle-switch:hover {
+  border-color: var(--primary);
+}
+
+.toggle-switch input[type="checkbox"] {
+  display: none;
+  width: auto;
+  padding: 0;
+  border: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--glass-border);
+  border-radius: 10px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--primary);
+}
+
+.toggle-switch input:checked + .toggle-slider::after {
+  left: 18px;
+  background: #fff;
+}
+
+.toggle-label {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text);
 }
 
 .column-mapping-grid {
