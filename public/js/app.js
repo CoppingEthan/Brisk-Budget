@@ -204,10 +204,26 @@ const App = {
       Transactions.showModal();
     });
 
+    // Transaction direction toggle (money in/out)
+    document.getElementById('transactionDirection').addEventListener('click', function() {
+      if (this.classList.contains('out')) {
+        this.classList.remove('out');
+        this.classList.add('in');
+        this.querySelector('.direction-label').textContent = 'IN';
+      } else {
+        this.classList.remove('in');
+        this.classList.add('out');
+        this.querySelector('.direction-label').textContent = 'OUT';
+      }
+    });
+
     this.bindModal('transactionModal', 'transactionForm', async (form) => {
+      const dirBtn = document.getElementById('transactionDirection');
+      const isOut = dirBtn.classList.contains('out');
+      const rawAmount = Math.abs(parseFloat(form.querySelector('#transactionAmount').value));
       const formData = {
         payee: form.querySelector('#transactionPayee').value,
-        amount: parseFloat(form.querySelector('#transactionAmount').value),
+        amount: isOut ? -rawAmount : rawAmount,
         date: form.querySelector('#transactionDate').value,
         category: form.querySelector('#transactionCategory').value,
         description: form.querySelector('#transactionDescription').value,
