@@ -907,6 +907,43 @@ body::before {
   background: var(--primary);
 }
 
+.chart-forecast-selector {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  background: var(--glass-lighter);
+  border-radius: 8px;
+  padding: 0.25rem;
+}
+
+.forecast-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 0 0.5rem;
+}
+
+.chart-forecast-btn {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-forecast-btn:hover {
+  color: var(--text);
+  background: var(--glass-border);
+}
+
+.chart-forecast-btn.active {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.3);
+}
+
 .chart-date-range {
   display: flex;
   align-items: center;
@@ -3036,15 +3073,21 @@ select optgroup option {
     gap: 0.5rem;
   }
 
-  .chart-range-selector {
+  .chart-range-selector,
+  .chart-forecast-selector {
     width: 100%;
     justify-content: space-between;
   }
 
-  .chart-range-btn {
+  .chart-range-btn,
+  .chart-forecast-btn {
     flex: 1;
     padding: 0.5rem 0.25rem;
     font-size: 0.6875rem;
+  }
+
+  .forecast-label {
+    display: none;
   }
 
   .chart-date-range {
@@ -3436,7 +3479,8 @@ select optgroup option {
   }
 
   /* Chart buttons */
-  .chart-range-btn {
+  .chart-range-btn,
+  .chart-forecast-btn {
     padding: 0.375rem 0.125rem;
     font-size: 0.625rem;
   }
