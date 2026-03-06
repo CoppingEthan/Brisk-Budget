@@ -137,6 +137,7 @@ const Dashboard = {
         html += `
           <div class="chart-toggle-group" data-group-id="${group.id}">
             <button class="account-toggle chart-toggle-group-btn ${noneSelected ? '' : 'active'} ${partial ? 'chart-toggle-partial' : ''}" data-group-id="${group.id}">
+              ${group.icon ? `<span class="account-toggle-icon"><img src="${group.icon}" alt=""></span>` : ''}
               <span class="account-toggle-name">${group.name}</span>
               <span class="group-chevron">▼</span>
             </button>

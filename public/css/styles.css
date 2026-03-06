@@ -378,11 +378,17 @@ body::before {
 }
 
 .account-group-actions {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   gap: 0.125rem;
   opacity: 0;
   transition: opacity 0.2s;
-  flex-shrink: 0;
+  background: var(--glass-lighter);
+  border-radius: 4px;
+  padding: 0 0.125rem;
 }
 
 .account-group-header:hover .account-group-actions {
@@ -417,8 +423,12 @@ body::before {
   max-height: 2000px;
 }
 
+.account-group-children .account-item {
+  padding-left: 1.875rem;
+}
+
 .account-group-empty {
-  padding: 0.375rem 1.5rem;
+  padding: 0.375rem 1.875rem;
   font-size: 0.7rem;
   color: var(--text-muted);
   font-style: italic;
