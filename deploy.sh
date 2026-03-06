@@ -17,7 +17,7 @@ APP_USER="brisk-budget"
 APP_PORT="${PORT:-3000}"
 NODE_VERSION="20"
 REPO_URL="https://github.com/CoppingEthan/Brisk-Budget.git"
-BRANCH="${BRANCH:-main}"
+BRANCH="${1:-${BRANCH:-main}}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -195,5 +195,5 @@ echo "To update in the future, run the same install command:"
 echo "  curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo bash"
 echo ""
 echo "To deploy the dev branch instead:"
-echo "  curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo BRANCH=dev bash"
+echo "  curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo bash -s -- dev"
 echo ""

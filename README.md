@@ -17,7 +17,7 @@ curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/depl
 To update to the latest version, run the same command again. To deploy the dev branch:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo BRANCH=dev bash
+curl -fsSL https://raw.githubusercontent.com/CoppingEthan/Brisk-Budget/main/deploy.sh | sudo bash -s -- dev
 ```
 
 The script will:
