@@ -1,9 +1,9 @@
 // Dashboard Management
 const Dashboard = {
   currentRange: '1m',
-  currentSankeyRange: '1m',
+  sankeyStartDate: null,
+  sankeyEndDate: null,
   currentForecast: '0',
-  currentSankeyForecast: '0',
   allTransactions: [],
   categories: [],
   recurringList: [],
@@ -56,6 +56,15 @@ const Dashboard = {
     // Load account selection for chart
     this.loadAccountSelection();
     this.renderAccountToggles();
+
+    // Initialize Sankey date range (default: 1 month ago to today)
+    if (!this.sankeyStartDate) {
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      this.sankeyStartDate = start;
+      this.sankeyEndDate = new Date();
+    }
+    this.updateSankeyDateInputs();
 
     this.renderCards();
     this.renderNetWorthChart();
@@ -137,6 +146,7 @@ const Dashboard = {
         html += `
           <div class="chart-toggle-group" data-group-id="${group.id}">
             <button class="account-toggle chart-toggle-group-btn ${noneSelected ? '' : 'active'} ${partial ? 'chart-toggle-partial' : ''}" data-group-id="${group.id}">
+              ${group.icon ? `<span class="account-toggle-icon"><img src="${group.icon}" alt=""></span>` : ''}
               <span class="account-toggle-name">${group.name}</span>
               <span class="group-chevron">▼</span>
             </button>
@@ -983,8 +993,7 @@ const Dashboard = {
     return date.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
   },
 
-  calculateCategoryFlows(range) {
-    const { start, end } = this.getDateRange(range);
+  calculateCategoryFlows(start, end) {
 
     const txsInRange = this.allTransactions.filter(tx => {
       const txDate = new Date(tx.date);
@@ -1046,60 +1055,22 @@ const Dashboard = {
     return { income: incomeBySubcat, expenses: expensesByParent };
   },
 
-  calculateForecastCategoryFlows(forecastRange) {
-    const forecastEnd = this.getForecastEndDate(forecastRange);
-    if (!forecastEnd) return { income: {}, expenses: {} };
-
-    const forecastTxs = this.generateForecastTransactions(forecastEnd);
-
-    // Build category mapping
-    const categoryMap = {};
-    for (const cat of this.categories) {
-      categoryMap[cat.name] = cat.name;
-      for (const sub of (cat.subcategories || [])) {
-        categoryMap[sub.name] = cat.name;
-      }
-    }
-
-    const incomeCategory = this.categories.find(c => c.name === 'Income');
-    const incomeSubcategories = incomeCategory?.subcategories?.map(s => s.name) || [];
-
-    const incomeBySubcat = {};
-    const expensesByParent = {};
-
-    for (const tx of forecastTxs) {
-      if (tx.category === 'Transfer') continue;
-
-      const parentCategory = categoryMap[tx.category] || tx.category;
-
-      if (tx.amount > 0) {
-        if (parentCategory === 'Income') {
-          const subcat = incomeSubcategories.includes(tx.category) ? tx.category : 'Other Income';
-          incomeBySubcat[subcat] = (incomeBySubcat[subcat] || 0) + tx.amount;
-        }
-        // Ignore refunds in forecast
-      } else {
-        expensesByParent[parentCategory] = (expensesByParent[parentCategory] || 0) + Math.abs(tx.amount);
-      }
-    }
-
-    return { income: incomeBySubcat, expenses: expensesByParent };
+  updateSankeyDateInputs() {
+    const formatDate = (d) => d.toISOString().split('T')[0];
+    const startInput = document.getElementById('sankeyStartDate');
+    const endInput = document.getElementById('sankeyEndDate');
+    if (startInput) startInput.value = formatDate(this.sankeyStartDate);
+    if (endInput) endInput.value = formatDate(this.sankeyEndDate);
   },
 
   renderSankeyChart() {
     const container = document.getElementById('sankeyChart');
-    const { income, expenses } = this.calculateCategoryFlows(this.currentSankeyRange);
-    const forecast = this.currentSankeyForecast !== '0'
-      ? this.calculateForecastCategoryFlows(this.currentSankeyForecast)
-      : { income: {}, expenses: {} };
+    const { income, expenses } = this.calculateCategoryFlows(this.sankeyStartDate, this.sankeyEndDate);
 
     const totalIncome = Object.values(income).reduce((sum, v) => sum + v, 0);
     const totalExpenses = Object.values(expenses).reduce((sum, v) => sum + v, 0);
-    const forecastIncome = Object.values(forecast.income).reduce((sum, v) => sum + v, 0);
-    const forecastExpenses = Object.values(forecast.expenses).reduce((sum, v) => sum + v, 0);
-    const hasForecast = this.currentSankeyForecast !== '0';
 
-    if (totalIncome === 0 && totalExpenses === 0 && !hasForecast) {
+    if (totalIncome === 0 && totalExpenses === 0) {
       container.innerHTML = '<p class="empty-state">No transaction data for this period</p>';
       return;
     }
@@ -1286,14 +1257,10 @@ const Dashboard = {
               fill="#ef4444" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
           Out: ${App.formatCurrency(totalExpenses)}
         </text>
-        <text x="${centerX}" y="${height - 10}" text-anchor="middle"
-              fill="#64748b" font-size="8" font-family="system-ui">
-          ${hasForecast ? `Forecast: +${App.formatCurrency(forecastIncome)} / -${App.formatCurrency(forecastExpenses)}` : ''}
-        </text>
         ` : `
         <text x="${leftX + nodeWidth / 2}" y="${height - 8}" text-anchor="middle"
               fill="#22c55e" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
-          Income: ${App.formatCurrency(totalIncome)}${hasForecast ? ` (+${App.formatCurrency(forecastIncome)})` : ''}
+          Income: ${App.formatCurrency(totalIncome)}
         </text>
         <text x="${centerX}" y="${height - 8}" text-anchor="middle"
               fill="${surplusColor}" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
@@ -1301,17 +1268,9 @@ const Dashboard = {
         </text>
         <text x="${rightX + nodeWidth / 2}" y="${height - 8}" text-anchor="middle"
               fill="#ef4444" font-size="${fontSize.bottom}" font-weight="700" font-family="system-ui">
-          Expenses: ${App.formatCurrency(totalExpenses)}${hasForecast ? ` (+${App.formatCurrency(forecastExpenses)})` : ''}
+          Expenses: ${App.formatCurrency(totalExpenses)}
         </text>
         `}
-
-        <!-- Forecast indicator (desktop only) -->
-        ${hasForecast && !isMobile ? `
-          <text x="${width - padding.right}" y="${padding.top}" text-anchor="end"
-                fill="#94a3b8" font-size="11" font-style="italic" font-family="system-ui">
-            Forecast: +${App.formatCurrency(forecastIncome - forecastExpenses)} net
-          </text>
-        ` : ''}
       </svg>
     `;
   },
@@ -1337,24 +1296,14 @@ const Dashboard = {
       });
     });
 
-    // Sankey chart range buttons
-    document.querySelectorAll('[data-sankey-range]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-sankey-range]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.currentSankeyRange = btn.dataset.sankeyRange;
-        this.renderSankeyChart();
-      });
+    // Sankey chart date range inputs
+    document.getElementById('sankeyStartDate')?.addEventListener('change', (e) => {
+      this.sankeyStartDate = new Date(e.target.value + 'T00:00:00');
+      this.renderSankeyChart();
     });
-
-    // Sankey chart forecast buttons
-    document.querySelectorAll('[data-sankey-forecast]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-sankey-forecast]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.currentSankeyForecast = btn.dataset.sankeyForecast;
-        this.renderSankeyChart();
-      });
+    document.getElementById('sankeyEndDate')?.addEventListener('change', (e) => {
+      this.sankeyEndDate = new Date(e.target.value + 'T23:59:59');
+      this.renderSankeyChart();
     });
 
     let resizeTimeout;

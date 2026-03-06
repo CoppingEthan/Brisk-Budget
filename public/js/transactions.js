@@ -343,7 +343,21 @@ const Transactions = {
     // Fill form
     const payeeInput = document.getElementById('transactionPayee');
     payeeInput.value = transaction?.payee || '';
-    document.getElementById('transactionAmount').value = transaction?.amount || '';
+
+    // Set direction toggle and amount (always positive in the input)
+    const dirBtn = document.getElementById('transactionDirection');
+    const amount = transaction?.amount || 0;
+    if (amount > 0) {
+      dirBtn.classList.remove('out');
+      dirBtn.classList.add('in');
+      dirBtn.querySelector('.direction-label').textContent = 'IN';
+    } else {
+      dirBtn.classList.remove('in');
+      dirBtn.classList.add('out');
+      dirBtn.querySelector('.direction-label').textContent = 'OUT';
+    }
+    document.getElementById('transactionAmount').value = amount ? Math.abs(amount) : '';
+
     document.getElementById('transactionDate').value = transaction?.date || new Date().toISOString().split('T')[0];
     document.getElementById('transactionDescription').value = transaction?.description || '';
     document.getElementById('transactionNotes').value = transaction?.notes || '';

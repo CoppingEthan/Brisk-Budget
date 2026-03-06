@@ -111,7 +111,6 @@ const Accounts = {
           <div class="account-group ${expandedClass}" data-group-id="${group.id}" draggable="true">
             <div class="account-group-header" data-group-id="${group.id}">
               <div class="drag-handle">&#8942;&#8942;</div>
-              <span class="account-group-chevron">&#9656;</span>
               ${groupIconHtml}
               <span class="account-group-name">${group.name}</span>
               <span class="account-group-balance ${balanceClass}">${App.formatCurrency(groupBalance)}</span>
@@ -239,11 +238,13 @@ const Accounts = {
         this.clearDragStyles(container);
       });
 
-      // Account-on-account drop (reorder)
+      // Account as drop target (reorder accounts, or reposition groups)
       item.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (this.draggedType === 'account' && this.draggedItem !== item) {
+          item.classList.add('drag-over');
+        } else if (this.draggedType === 'group' && !item.closest('.account-group')) {
           item.classList.add('drag-over');
         }
       });
@@ -259,6 +260,8 @@ const Accounts = {
         item.classList.remove('drag-over');
         if (this.draggedType === 'account' && this.draggedItem !== item) {
           this.handleAccountDrop(item);
+        } else if (this.draggedType === 'group' && !item.closest('.account-group')) {
+          this.handleGroupDrop(item);
         }
       });
     });
@@ -331,7 +334,7 @@ const Accounts = {
           const accountId = this.draggedItem.dataset.id;
           this.moveAccountToGroup(accountId, groupId);
         } else if (this.draggedType === 'group' && targetGroup !== this.draggedItem) {
-          this.handleGroupReorder(targetGroup);
+          this.handleGroupDrop(targetGroup);
         }
       });
     });
@@ -418,42 +421,50 @@ const Accounts = {
     // Same group (or both ungrouped) - reorder
     if (targetGroupId) {
       // Reorder within group
-      const groupAccounts = this.list.filter(a => a.groupId === targetGroupId);
+      const groupAccounts = this.list
+        .filter(a => a.groupId === targetGroupId)
+        .sort((a, b) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity));
       const dragIdx = groupAccounts.findIndex(a => a.id === draggedId);
       const targetIdx = groupAccounts.findIndex(a => a.id === targetId);
       if (dragIdx === -1 || targetIdx === -1) return;
       const [removed] = groupAccounts.splice(dragIdx, 1);
       groupAccounts.splice(targetIdx, 0, removed);
-      this.render();
       await API.reorderAccounts(groupAccounts.map(a => a.id));
     } else {
-      // Reorder ungrouped accounts
-      const ungrouped = this.list.filter(a => !a.groupId);
-      const dragIdx = ungrouped.findIndex(a => a.id === draggedId);
-      const targetIdx = ungrouped.findIndex(a => a.id === targetId);
+      // Reorder in full top-level list (accounts and groups freely interleaved)
+      const currentItems = this.buildSidebarItems();
+      const dragIdx = currentItems.findIndex(i => i.type === 'account' && i.account.id === draggedId);
+      const targetIdx = currentItems.findIndex(i => i.type === 'account' && i.account.id === targetId);
       if (dragIdx === -1 || targetIdx === -1) return;
-      const [removed] = ungrouped.splice(dragIdx, 1);
-      ungrouped.splice(targetIdx, 0, removed);
-
-      // Save new top-level order
-      await this.saveTopLevelOrder();
+      const [removed] = currentItems.splice(dragIdx, 1);
+      currentItems.splice(targetIdx, 0, removed);
+      const order = currentItems.map(item => ({
+        type: item.type,
+        id: item.type === 'group' ? item.group.id : item.account.id
+      }));
+      await API.reorderAccountGroups(order);
     }
     await this.load();
   },
 
-  async handleGroupReorder(targetGroupEl) {
+  async handleGroupDrop(targetEl) {
     const items = this.buildSidebarItems();
     const draggedGroupId = this.draggedItem.dataset.groupId;
-    const targetGroupId = targetGroupEl.dataset.groupId;
-
     const dragIdx = items.findIndex(i => i.type === 'group' && i.group.id === draggedGroupId);
-    const targetIdx = items.findIndex(i => i.type === 'group' && i.group.id === targetGroupId);
+
+    // Find target — could be a group or an ungrouped account
+    let targetIdx = -1;
+    if (targetEl.dataset.groupId) {
+      targetIdx = items.findIndex(i => i.type === 'group' && i.group.id === targetEl.dataset.groupId);
+    } else if (targetEl.dataset.id) {
+      targetIdx = items.findIndex(i => i.type === 'account' && i.account.id === targetEl.dataset.id);
+    }
+
     if (dragIdx === -1 || targetIdx === -1) return;
 
     const [removed] = items.splice(dragIdx, 1);
     items.splice(targetIdx, 0, removed);
 
-    // Build order array
     const order = items.map(item => ({
       type: item.type,
       id: item.type === 'group' ? item.group.id : item.account.id

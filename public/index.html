@@ -123,19 +123,10 @@
             <div class="dashboard-chart-header">
               <h3>Money Flow by Category</h3>
               <div class="chart-controls">
-                <div class="chart-range-selector">
-                  <button class="chart-range-btn active" data-sankey-range="1m">1M</button>
-                  <button class="chart-range-btn" data-sankey-range="3m">3M</button>
-                  <button class="chart-range-btn" data-sankey-range="6m">6M</button>
-                  <button class="chart-range-btn" data-sankey-range="1y">1Y</button>
-                </div>
-                <div class="chart-forecast-selector">
-                  <span class="forecast-label">Forecast:</span>
-                  <button class="chart-forecast-btn active" data-sankey-forecast="0">Off</button>
-                  <button class="chart-forecast-btn" data-sankey-forecast="1m">1M</button>
-                  <button class="chart-forecast-btn" data-sankey-forecast="3m">3M</button>
-                  <button class="chart-forecast-btn" data-sankey-forecast="6m">6M</button>
-                  <button class="chart-forecast-btn" data-sankey-forecast="1y">1Y</button>
+                <div class="chart-date-range">
+                  <input type="date" id="sankeyStartDate" class="chart-date-input">
+                  <span class="chart-date-separator">to</span>
+                  <input type="date" id="sankeyEndDate" class="chart-date-input">
                 </div>
               </div>
             </div>
@@ -313,7 +304,12 @@
           </div>
           <div class="form-group">
             <label for="transactionAmount">Amount</label>
-            <input type="number" id="transactionAmount" step="0.01" required>
+            <div class="amount-input-wrapper">
+              <button type="button" id="transactionDirection" class="amount-direction-btn out" title="Toggle money in/out">
+                <span class="direction-label">OUT</span>
+              </button>
+              <input type="number" id="transactionAmount" step="0.01" min="0" required>
+            </div>
           </div>
         </div>
         <div class="form-row">
