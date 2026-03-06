@@ -418,25 +418,34 @@ const Accounts = {
     // Same group (or both ungrouped) - reorder
     if (targetGroupId) {
       // Reorder within group
-      const groupAccounts = this.list.filter(a => a.groupId === targetGroupId);
+      const groupAccounts = this.list
+        .filter(a => a.groupId === targetGroupId)
+        .sort((a, b) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity));
       const dragIdx = groupAccounts.findIndex(a => a.id === draggedId);
       const targetIdx = groupAccounts.findIndex(a => a.id === targetId);
       if (dragIdx === -1 || targetIdx === -1) return;
       const [removed] = groupAccounts.splice(dragIdx, 1);
       groupAccounts.splice(targetIdx, 0, removed);
-      this.render();
       await API.reorderAccounts(groupAccounts.map(a => a.id));
     } else {
-      // Reorder ungrouped accounts
-      const ungrouped = this.list.filter(a => !a.groupId);
+      // Reorder ungrouped accounts — build order from current sidebar layout
+      const currentItems = this.buildSidebarItems();
+      const ungrouped = currentItems.filter(i => i.type === 'account').map(i => i.account);
       const dragIdx = ungrouped.findIndex(a => a.id === draggedId);
       const targetIdx = ungrouped.findIndex(a => a.id === targetId);
       if (dragIdx === -1 || targetIdx === -1) return;
       const [removed] = ungrouped.splice(dragIdx, 1);
       ungrouped.splice(targetIdx, 0, removed);
 
-      // Save new top-level order
-      await this.saveTopLevelOrder();
+      // Rebuild full order preserving group positions with rearranged ungrouped
+      let ungroupedIdx = 0;
+      const order = currentItems.map(item => {
+        if (item.type === 'group') {
+          return { type: 'group', id: item.group.id };
+        }
+        return { type: 'account', id: ungrouped[ungroupedIdx++].id };
+      });
+      await API.reorderAccountGroups(order);
     }
     await this.load();
   },
