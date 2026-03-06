@@ -36,6 +36,7 @@ echo "============================================"
 echo -e "${GREEN}Brisk Budget Installer${NC}"
 echo "============================================"
 echo ""
+log_info "Target branch: ${BRANCH}"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
@@ -94,6 +95,7 @@ if [ "$IS_UPDATE" = true ]; then
 
     # Pull latest changes
     git fetch origin
+    log_info "Checking out branch: ${BRANCH}"
     git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
     git reset --hard "origin/$BRANCH"
 
