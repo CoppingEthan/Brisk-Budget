@@ -10,6 +10,7 @@ const categoriesFile = path.join(DATA_DIR, 'categories.json');
 const payeesFile = path.join(DATA_DIR, 'payees.json');
 const recurringFile = path.join(DATA_DIR, 'recurring.json');
 const settingsFile = path.join(DATA_DIR, 'settings.json');
+const dismissedFile = path.join(DATA_DIR, 'dismissed.json');
 
 const getTransactionsFile = (accountId) => path.join(TRANSACTIONS_DIR, `${accountId}.json`);
 
@@ -23,5 +24,6 @@ module.exports = {
   payeesFile,
   recurringFile,
   settingsFile,
+  dismissedFile,
   getTransactionsFile
 };

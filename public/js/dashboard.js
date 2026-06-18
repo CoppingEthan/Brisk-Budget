@@ -403,14 +403,15 @@ const Dashboard = {
 
     for (const recurring of this.recurringList) {
       if (!recurring.active) continue;
+      if (recurring.paused) continue;
 
       let nextDate = new Date(recurring.nextDueDate);
-      const endDate = recurring.endCondition?.type === 'date'
-        ? new Date(recurring.endCondition.date)
+      const endDate = recurring.endCondition?.type === 'on_date'
+        ? new Date(recurring.endCondition.value)
         : null;
       let occurrences = 0;
-      const maxOccurrences = recurring.endCondition?.type === 'occurrences'
-        ? recurring.endCondition.count - (recurring.completedOccurrences || 0)
+      const maxOccurrences = recurring.endCondition?.type === 'after_occurrences'
+        ? recurring.endCondition.value - (recurring.occurrencesCompleted || 0)
         : Infinity;
 
       while (nextDate <= forecastEnd && occurrences < maxOccurrences) {
@@ -452,6 +453,51 @@ const Dashboard = {
     return forecastTxs;
   },
 
+  // Estimate non-recurring "variable" everyday spend from the trailing 3 months.
+  // Returns a smooth daily drift plus monthly volatility (sigma) for the band.
+  computeVariableSpend(selectedAccountSet) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const windowStart = new Date(today);
+    windowStart.setMonth(windowStart.getMonth() - 3);
+
+    // Payees that already have a recurring template — excluded to avoid double-counting
+    const templatedPayees = new Set(
+      this.recurringList
+        .filter(r => r.type === 'transaction' && r.payee)
+        .map(r => r.payee.toLowerCase().trim().replace(/\s+/g, ' '))
+    );
+
+    const windowMs = today - windowStart;
+    const bucketMs = windowMs / 3;
+    const buckets = [0, 0, 0]; // three ~monthly buckets of variable net
+    let total = 0;
+
+    for (const tx of this.allTransactions) {
+      if (!selectedAccountSet.has(tx._accountId)) continue;
+      if (tx.category === 'Transfer' || tx.transferId) continue;
+      const payeeKey = (tx.payee || '').toLowerCase().trim().replace(/\s+/g, ' ');
+      if (templatedPayees.has(payeeKey)) continue;
+
+      const txDate = new Date(tx.date);
+      if (txDate < windowStart || txDate >= today) continue;
+
+      const idx = Math.min(2, Math.floor((txDate - windowStart) / bucketMs));
+      buckets[idx] += tx.amount;
+      total += tx.amount;
+    }
+
+    const days = Math.max(1, Math.round(windowMs / 86400000));
+    const dailyDrift = total / days;
+
+    // Volatility = std-dev of the monthly variable nets
+    const mean = (buckets[0] + buckets[1] + buckets[2]) / 3;
+    const variance = buckets.reduce((s, v) => s + (v - mean) ** 2, 0) / 3;
+    const sigma = Math.sqrt(variance);
+
+    return { dailyDrift, sigma };
+  },
+
   calculateForecastNetWorth(forecastRange) {
     const forecastEnd = this.getForecastEndDate(forecastRange);
     if (!forecastEnd) return [];
@@ -467,6 +513,9 @@ const Dashboard = {
     const filteredForecastTxs = forecastTxs.filter(tx => selectedAccountSet.has(tx._accountId));
 
     if (filteredForecastTxs.length === 0 && accountsToUse.length === 0) return [];
+
+    // Variable everyday-spend estimate (drift + volatility for the confidence band)
+    const { dailyDrift, sigma } = this.computeVariableSpend(selectedAccountSet);
 
     // Get current balances as starting point for selected accounts
     const balances = {};
@@ -495,14 +544,14 @@ const Dashboard = {
     for (let i = 0; i <= numPoints; i++) {
       const pointDate = new Date(today.getTime() + (interval * i));
 
-      // Apply transactions up to this point
+      // Apply scheduled recurring transactions up to this point
       while (txIndex < filteredForecastTxs.length && new Date(filteredForecastTxs[txIndex].date) <= pointDate) {
         const tx = filteredForecastTxs[txIndex];
         balances[tx._accountId] = (balances[tx._accountId] || 0) + tx.amount;
         txIndex++;
       }
 
-      // Calculate net worth at this point for selected accounts only
+      // Scheduled (deterministic) net worth at this point for selected accounts
       let netWorth = 0;
       for (const account of accountsToUse) {
         const balance = balances[account.id] || account.startingBalance;
@@ -513,7 +562,18 @@ const Dashboard = {
         }
       }
 
-      dataPoints.push({ date: pointDate, value: netWorth, isForecast: true });
+      // Add smooth variable-spend drift; band widens with sqrt(time)
+      const elapsedDays = Math.max(0, (pointDate - today) / 86400000);
+      const value = netWorth + dailyDrift * elapsedDays;
+      const band = 1.28 * sigma * Math.sqrt(elapsedDays / 30.44);
+
+      dataPoints.push({
+        date: pointDate,
+        value,
+        lower: value - band,
+        upper: value + band,
+        isForecast: true
+      });
     }
 
     return dataPoints;
@@ -647,8 +707,13 @@ const Dashboard = {
     const chartHeight = height - padding.top - padding.bottom;
 
     const values = allData.map(d => d.value);
-    const dataMin = Math.min(...values);
-    const dataMax = Math.max(...values);
+    // Include the confidence band extremes so the shaded area stays in view
+    const bandValues = [];
+    for (const d of forecastData) {
+      if (d.lower !== undefined) bandValues.push(d.lower, d.upper);
+    }
+    const dataMin = Math.min(...values, ...bandValues);
+    const dataMax = Math.max(...values, ...bandValues);
 
     // Calculate nice scale that includes 0
     const scale = this.calculateNiceScale(dataMin, dataMax);
@@ -761,6 +826,28 @@ const Dashboard = {
       }
     }
 
+    // Confidence band (variable-spend uncertainty): shaded area + dashed edges
+    let bandAreaD = '';
+    let bandUpperD = '';
+    let bandLowerD = '';
+    if (forecastData.length > 1 && forecastData[0].lower !== undefined) {
+      const fX = (j) => xScale(forecastStartIndex + j);
+      bandUpperD = `M ${fX(0)} ${yScale(forecastData[0].upper)}`;
+      for (let j = 1; j < forecastData.length; j++) {
+        bandUpperD += ` L ${fX(j)} ${yScale(forecastData[j].upper)}`;
+      }
+      bandLowerD = `M ${fX(0)} ${yScale(forecastData[0].lower)}`;
+      for (let j = 1; j < forecastData.length; j++) {
+        bandLowerD += ` L ${fX(j)} ${yScale(forecastData[j].lower)}`;
+      }
+      // Area: upper edge left→right, then lower edge right→left
+      let areaReturn = '';
+      for (let j = forecastData.length - 1; j >= 0; j--) {
+        areaReturn += ` L ${fX(j)} ${yScale(forecastData[j].lower)}`;
+      }
+      bandAreaD = bandUpperD + areaReturn + ' Z';
+    }
+
     // Generate y-axis labels at nice intervals
     const yLabels = [];
     for (let val = minVal; val <= maxVal; val += scale.step) {
@@ -812,6 +899,11 @@ const Dashboard = {
 
         <!-- Below zero area fill (red) -->
         ${belowZeroAreaD ? `<path d="${belowZeroAreaD}" fill="url(#belowZeroGradient)"/>` : ''}
+
+        <!-- Confidence band (variable-spend uncertainty) -->
+        ${bandAreaD ? `<path d="${bandAreaD}" fill="rgba(148, 163, 184, 0.15)"/>` : ''}
+        ${bandUpperD ? `<path d="${bandUpperD}" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.75"/>` : ''}
+        ${bandLowerD ? `<path d="${bandLowerD}" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.75"/>` : ''}
 
         <!-- Forecast divider line -->
         ${forecastData.length > 1 ? `

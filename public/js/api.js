@@ -337,6 +337,20 @@ const API = {
     return res.json();
   },
 
+  async getRecurringSuggestions() {
+    const res = await fetch('/api/recurring/suggestions');
+    return res.json();
+  },
+
+  async dismissRecurringSuggestion(signature) {
+    const res = await fetch('/api/recurring/suggestions/dismiss', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signature })
+    });
+    return res.json();
+  },
+
   // Backup
   downloadBackup() {
     window.location.href = '/api/backup';

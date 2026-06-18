@@ -585,9 +585,11 @@ const Accounts = {
       item.classList.toggle('active', item.dataset.id === id);
     });
     document.querySelector('.nav-dashboard').classList.remove('active');
+    document.getElementById('recurringBtn')?.classList.remove('active');
 
     // Show account view
     document.getElementById('dashboardView').classList.add('hidden');
+    document.getElementById('recurringView').classList.add('hidden');
     document.getElementById('accountView').classList.remove('hidden');
 
     // Update header with icon

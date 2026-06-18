@@ -157,6 +157,14 @@ const router = (req, res) => {
 
     // /api/recurring
     if (parts[1] === 'recurring') {
+      // /api/recurring/suggestions
+      if (parts.length === 3 && parts[2] === 'suggestions') {
+        if (method === 'GET') return recurring.getSuggestions(req, res);
+      }
+      // /api/recurring/suggestions/dismiss
+      if (parts.length === 4 && parts[2] === 'suggestions' && parts[3] === 'dismiss') {
+        if (method === 'POST') return recurring.dismissSuggestion(req, res);
+      }
       if (parts.length === 2) {
         if (method === 'GET') return recurring.getRecurring(req, res);
         if (method === 'POST') return recurring.createRecurring(req, res);

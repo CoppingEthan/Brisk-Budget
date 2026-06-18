@@ -3580,3 +3580,281 @@ select optgroup option {
     padding: 0;
   }
 }
+/* ==================== Recurring View (Phase 1/2) ==================== */
+
+.recurring-summary .dashboard-card-value.positive { color: var(--success); }
+.recurring-summary .dashboard-card-value.negative { color: var(--danger); }
+
+.recurring-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.recurring-section,
+.recurring-suggestions {
+  background: var(--glass-light);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+}
+
+.recurring-suggestions {
+  margin-top: 1.25rem;
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.recurring-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.recurring-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recurring-section-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-light);
+  background: var(--glass-lighter);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+}
+
+.recurring-section-subtotal {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.recurring-section-subtotal.positive { color: var(--success); }
+.recurring-section-subtotal.negative { color: var(--danger); }
+
+.recurring-section-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Rows */
+.recurring-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.recurring-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+.recurring-row:last-child { border-bottom: none; }
+.recurring-row.paused { opacity: 0.55; }
+
+.recurring-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  cursor: pointer;
+}
+
+.recurring-row-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recurring-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+}
+
+.recurring-row-meta {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.recurring-row-amounts {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+
+.recurring-row-amount {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.recurring-row-amount.positive { color: var(--success); }
+.recurring-row-amount.negative { color: var(--danger); }
+
+.recurring-row-mo {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.recurring-row-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Collapsible expense category groups */
+.recurring-cat-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.recurring-cat-group {
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.recurring-cat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  cursor: pointer;
+  background: var(--glass-lighter);
+}
+
+.recurring-cat-chevron {
+  font-size: 0.7rem;
+  color: var(--text-light);
+  transition: transform 0.2s;
+}
+.recurring-cat-group.collapsed .recurring-cat-chevron { transform: rotate(-90deg); }
+
+.recurring-cat-emoji { font-size: 1rem; }
+
+.recurring-cat-name {
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+.recurring-cat-count {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  background: var(--glass-light);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.recurring-cat-subtotal {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+.recurring-cat-subtotal.negative { color: var(--danger); }
+
+.recurring-cat-rows { padding: 0 0.875rem; }
+.recurring-cat-group.collapsed .recurring-cat-rows { display: none; }
+
+/* Suggestions */
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+.suggestion-item:last-child { border-bottom: none; }
+
+.suggestion-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.suggestion-payee {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.suggestion-meta {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.suggestion-amount {
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text);
+}
+.suggestion-amount.positive { color: var(--success); }
+.suggestion-amount.negative { color: var(--danger); }
+
+.suggestion-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Income / Expense / Transfer segmented toggle */
+.segmented-toggle {
+  display: inline-flex;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--glass-light);
+}
+
+.segmented-toggle .segment {
+  padding: 0.5rem 1.1rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-light);
+  user-select: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.segmented-toggle .segment input { display: none; }
+.segmented-toggle .segment + .segment { border-left: 1px solid var(--glass-border); }
+
+.segmented-toggle .segment:has(input:checked) { background: var(--primary); color: #fff; }
+.segmented-toggle .seg-income:has(input:checked) { background: var(--success); color: #fff; }
+.segmented-toggle .seg-expense:has(input:checked) { background: var(--danger); color: #fff; }
+.segmented-toggle .seg-transfer:has(input:checked) { background: var(--primary); color: #fff; }
+
+/* Sidebar Recurring active state */
+.btn-text.active { color: var(--primary); }
+
+@media (max-width: 600px) {
+  .recurring-row { flex-wrap: wrap; }
+  .recurring-row-amounts { text-align: left; }
+  .recurring-row-actions { margin-left: auto; }
+  .suggestion-item { flex-wrap: wrap; }
+  .suggestion-actions { margin-left: auto; }
+}

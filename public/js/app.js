@@ -596,13 +596,34 @@ const App = {
 
     Accounts.current = null;
     document.getElementById('accountView').classList.add('hidden');
+    document.getElementById('recurringView').classList.add('hidden');
     document.getElementById('dashboardView').classList.remove('hidden');
     document.querySelector('.nav-dashboard').classList.add('active');
+    document.getElementById('recurringBtn').classList.remove('active');
     document.querySelectorAll('.account-item').forEach(item => {
       item.classList.remove('active');
     });
     // Reload dashboard data
     await Dashboard.load();
+  },
+
+  async showRecurring() {
+    // Close mobile menu if open
+    if (window.innerWidth <= 1400 && typeof this.closeMobileMenu === 'function') {
+      this.closeMobileMenu();
+    }
+
+    Accounts.current = null;
+    document.getElementById('dashboardView').classList.add('hidden');
+    document.getElementById('accountView').classList.add('hidden');
+    document.getElementById('recurringView').classList.remove('hidden');
+    document.querySelector('.nav-dashboard').classList.remove('active');
+    document.getElementById('recurringBtn').classList.add('active');
+    document.querySelectorAll('.account-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    // Refresh templates then render the view
+    await Recurring.load();
   },
 
   async showSettings() {

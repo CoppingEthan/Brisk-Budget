@@ -36,6 +36,7 @@ const initializeData = () => {
   initDataFile('categories.json', defaultCategories);
   initDataFile('payees.json', []);
   initDataFile('recurring.json', []);
+  initDataFile('dismissed.json', []);
   initDataFile('settings.json', { currencySymbol: '£' });
 
   // Ensure transaction files exist for all accounts

@@ -190,6 +190,49 @@
         </div>
         </div>
       </div>
+
+      <!-- Recurring View -->
+      <div class="view hidden" id="recurringView">
+        <div class="view-header recurring-header">
+          <div class="view-header-left">
+            <div class="view-title">
+              <div class="account-name-row">
+                <h2>Recurring</h2>
+              </div>
+            </div>
+          </div>
+          <div class="view-actions">
+            <button class="btn btn-primary" id="addRecurringViewBtn">Add Recurring</button>
+          </div>
+        </div>
+        <div class="view-content">
+          <!-- Summary strip -->
+          <div class="dashboard-cards recurring-summary">
+            <div class="dashboard-card">
+              <span class="dashboard-card-label">Monthly Income</span>
+              <span class="dashboard-card-value positive" id="recurringMonthlyIncome">£0.00</span>
+            </div>
+            <div class="dashboard-card">
+              <span class="dashboard-card-label">Monthly Expenses</span>
+              <span class="dashboard-card-value negative" id="recurringMonthlyExpenses">£0.00</span>
+            </div>
+            <div class="dashboard-card">
+              <span class="dashboard-card-label">Monthly Net</span>
+              <span class="dashboard-card-value" id="recurringMonthlyNet">£0.00</span>
+            </div>
+            <div class="dashboard-card">
+              <span class="dashboard-card-label">Next 30 Days</span>
+              <span class="dashboard-card-value" id="recurringNext30">£0.00</span>
+            </div>
+          </div>
+
+          <!-- Suggested recurring payments (Phase 2) -->
+          <div class="recurring-suggestions hidden" id="recurringSuggestions"></div>
+
+          <!-- Income / Expenses / Transfers sections -->
+          <div class="recurring-sections" id="recurringSections"></div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -646,26 +689,6 @@
     </div>
   </div>
 
-  <!-- Recurring List Modal -->
-  <div class="modal hidden" id="recurringListModal">
-    <div class="modal-backdrop"></div>
-    <div class="modal-content modal-medium">
-      <div class="modal-header">
-        <h3>Recurring Payments</h3>
-        <button class="btn-icon modal-close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="recurring-list-container" id="recurringListContainer">
-          <p class="empty-state">No recurring payments</p>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary modal-cancel">Close</button>
-        <button type="button" class="btn btn-primary" id="addRecurringBtn">+ Add Recurring</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Recurring Payment Modal (Add/Edit) -->
   <div class="modal hidden" id="recurringModal">
     <div class="modal-backdrop"></div>
@@ -677,9 +700,10 @@
       <form id="recurringForm">
         <div class="form-group">
           <label>Type</label>
-          <div class="radio-group-inline">
-            <label><input type="radio" name="recurringType" value="transaction" checked> Transaction</label>
-            <label><input type="radio" name="recurringType" value="transfer"> Transfer</label>
+          <div class="segmented-toggle" id="recurringModeToggle">
+            <label class="segment seg-income"><input type="radio" name="recurringMode" value="income" checked> Income</label>
+            <label class="segment seg-expense"><input type="radio" name="recurringMode" value="expense"> Expense</label>
+            <label class="segment seg-transfer"><input type="radio" name="recurringMode" value="transfer"> Transfer</label>
           </div>
         </div>
 
@@ -697,7 +721,7 @@
             </div>
             <div class="form-group">
               <label for="recurringAmount">Amount</label>
-              <input type="number" id="recurringAmount" step="0.01" required>
+              <input type="number" id="recurringAmount" step="0.01" min="0" required>
             </div>
           </div>
           <div class="form-group">
