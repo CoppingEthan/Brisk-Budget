@@ -316,6 +316,7 @@ const Dashboard = {
           break;
         case 'credit':
         case 'loan':
+        case 'mortgage':
           // Debt is shown as positive (amount owed)
           debt += Math.abs(balance);
           break;
@@ -324,7 +325,7 @@ const Dashboard = {
       // Net worth calculation - same logic as chart
       // For accounts with assetValue (loan/investment/asset): netWorth = assetValue + balance
       // For other accounts: netWorth = balance
-      if (['loan', 'investment', 'asset'].includes(account.type) && account.assetValue) {
+      if (['loan', 'investment', 'asset', 'mortgage'].includes(account.type) && account.assetValue) {
         netWorth += account.assetValue + balance;
       } else {
         netWorth += balance;
@@ -476,6 +477,7 @@ const Dashboard = {
     for (const tx of this.allTransactions) {
       if (!selectedAccountSet.has(tx._accountId)) continue;
       if (tx.category === 'Transfer' || tx.transferId) continue;
+      if (tx.autoInterest) continue; // mortgage interest is projected explicitly, not as variable drift
       const payeeKey = (tx.payee || '').toLowerCase().trim().replace(/\s+/g, ' ');
       if (templatedPayees.has(payeeKey)) continue;
 
@@ -496,6 +498,15 @@ const Dashboard = {
     const sigma = Math.sqrt(variance);
 
     return { dailyDrift, sigma };
+  },
+
+  // Step a YYYY-MM-DD date forward one month (UTC, DST-proof) — mirrors the server accrual
+  addMonthStr(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00Z');
+    const day = d.getUTCDate();
+    d.setUTCMonth(d.getUTCMonth() + 1);
+    if (d.getUTCDate() < day) d.setUTCDate(0);
+    return d.toISOString().split('T')[0];
   },
 
   calculateForecastNetWorth(forecastRange) {
@@ -522,6 +533,16 @@ const Dashboard = {
     for (const account of accountsToUse) {
       balances[account.id] = account._cachedBalance || account.startingBalance;
     }
+
+    // Forward mortgage interest: accrue monthly on each selected mortgage's projected balance
+    const todayStr = today.toISOString().split('T')[0];
+    const mortgageInterest = accountsToUse
+      .filter(a => a.type === 'mortgage' && (parseFloat(a.interestRate) || 0) > 0)
+      .map(a => ({
+        id: a.id,
+        monthlyRate: (parseFloat(a.interestRate) || 0) / 100 / 12,
+        nextInterest: this.addMonthStr(a.lastInterestAccrual || todayStr)
+      }));
 
     // Sort forecast transactions by date
     filteredForecastTxs.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -551,11 +572,21 @@ const Dashboard = {
         txIndex++;
       }
 
+      // Apply mortgage interest due up to this point (compounds on the declining balance)
+      const pointDateStr = pointDate.toISOString().split('T')[0];
+      for (const m of mortgageInterest) {
+        while (m.nextInterest <= pointDateStr) {
+          const owed = balances[m.id] || 0;
+          if (owed < 0) balances[m.id] = owed + Math.round(owed * m.monthlyRate * 100) / 100;
+          m.nextInterest = this.addMonthStr(m.nextInterest);
+        }
+      }
+
       // Scheduled (deterministic) net worth at this point for selected accounts
       let netWorth = 0;
       for (const account of accountsToUse) {
         const balance = balances[account.id] || account.startingBalance;
-        if (['loan', 'investment', 'asset'].includes(account.type) && account.assetValue) {
+        if (['loan', 'investment', 'asset', 'mortgage'].includes(account.type) && account.assetValue) {
           netWorth += account.assetValue + balance;
         } else {
           netWorth += balance;
@@ -632,7 +663,7 @@ const Dashboard = {
       let netWorth = 0;
       for (const account of accountsToUse) {
         const balance = balances[account.id] || account.startingBalance;
-        if (['loan', 'investment', 'asset'].includes(account.type) && account.assetValue) {
+        if (['loan', 'investment', 'asset', 'mortgage'].includes(account.type) && account.assetValue) {
           netWorth += account.assetValue + balance;
         } else {
           netWorth += balance;

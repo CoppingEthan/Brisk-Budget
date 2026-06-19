@@ -59,11 +59,17 @@ const App = {
         type: type,
         startingBalance: parseFloat(form.querySelector('#startingBalanceInput').value) || 0
       };
-      // Include assetValue for loan/investment/asset types
-      if (['loan', 'investment', 'asset'].includes(type)) {
+      // Include assetValue for loan/mortgage/investment/asset types (mortgage = property value)
+      if (['loan', 'investment', 'asset', 'mortgage'].includes(type)) {
         formData.assetValue = parseFloat(form.querySelector('#assetValueInput').value) || 0;
       } else {
         formData.assetValue = null;
+      }
+      // Annual interest rate only applies to mortgages
+      if (type === 'mortgage') {
+        formData.interestRate = parseFloat(form.querySelector('#interestRateInput').value) || 0;
+      } else {
+        formData.interestRate = null;
       }
       await Accounts.save(formData);
     });

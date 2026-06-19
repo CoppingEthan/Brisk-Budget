@@ -146,7 +146,7 @@ const Accounts = {
     const balance = this.getDisplayBalance(account);
     let balanceClass = '';
     if (balance !== 0) {
-      if (account.type === 'credit' || account.type === 'loan') {
+      if (account.type === 'credit' || account.type === 'loan' || account.type === 'mortgage') {
         balanceClass = balance > 0 ? 'negative' : 'positive';
       } else {
         balanceClass = balance < 0 ? 'negative' : 'positive';
@@ -649,7 +649,7 @@ const Accounts = {
   },
 
   formatForDisplay(account, balance) {
-    if (account.type === 'credit' || account.type === 'loan') {
+    if (account.type === 'credit' || account.type === 'loan' || account.type === 'mortgage') {
       return -balance;
     }
     return balance;
@@ -670,7 +670,7 @@ const Accounts = {
 
     // Only add color class if not zero
     if (this.current._cachedBalance !== 0) {
-      if (this.current.type === 'credit' || this.current.type === 'loan') {
+      if (this.current.type === 'credit' || this.current.type === 'loan' || this.current.type === 'mortgage') {
         if (displayBalance > 0) {
           balanceEl.classList.add('negative');
         }
@@ -692,7 +692,7 @@ const Accounts = {
   updateAssetValueDisplay() {
     const assetValueBadge = document.getElementById('assetValueBadge');
     const equityBadge = document.getElementById('equityBadge');
-    const assetTypes = ['loan', 'investment', 'asset'];
+    const assetTypes = ['loan', 'investment', 'asset', 'mortgage'];
 
     if (!this.current || !assetTypes.includes(this.current.type) || !this.current.assetValue) {
       assetValueBadge.classList.add('hidden');
@@ -740,8 +740,10 @@ const Accounts = {
     document.getElementById('accountTypeInput').value = account?.type || 'bank';
     document.getElementById('startingBalanceInput').value = account?.startingBalance || 0;
     document.getElementById('assetValueInput').value = account?.assetValue || 0;
+    const rateInput = document.getElementById('interestRateInput');
+    if (rateInput) rateInput.value = account?.interestRate || 0;
 
-    // Show/hide asset value field based on type
+    // Show/hide asset value + interest rate fields based on type
     this.toggleAssetValueField(account?.type || 'bank');
 
     // Show/hide delete button (only when editing)
@@ -760,11 +762,22 @@ const Accounts = {
 
   toggleAssetValueField(type) {
     const assetValueGroup = document.getElementById('assetValueGroup');
-    const showForTypes = ['loan', 'investment', 'asset'];
-    if (showForTypes.includes(type)) {
-      assetValueGroup.classList.remove('hidden');
-    } else {
-      assetValueGroup.classList.add('hidden');
+    const mortgageRateGroup = document.getElementById('mortgageRateGroup');
+    const assetValueLabel = document.getElementById('assetValueLabel');
+    const assetValueHelp = document.getElementById('assetValueHelp');
+    const showForTypes = ['loan', 'investment', 'asset', 'mortgage'];
+
+    assetValueGroup.classList.toggle('hidden', !showForTypes.includes(type));
+    if (mortgageRateGroup) mortgageRateGroup.classList.toggle('hidden', type !== 'mortgage');
+
+    // For a mortgage the "asset" is the property, used for equity & net worth
+    if (assetValueLabel) {
+      assetValueLabel.textContent = type === 'mortgage' ? 'Property Value (optional)' : 'Asset Value (optional)';
+    }
+    if (assetValueHelp) {
+      assetValueHelp.textContent = type === 'mortgage'
+        ? 'Current market value of the property (used for equity & net worth)'
+        : 'Current market value of the underlying asset';
     }
   },
 
@@ -834,6 +847,7 @@ const Accounts = {
     if (editId && this.current?.id === editId) {
       this.current = this.list.find(a => a.id === editId);
       this.updateHeaderDisplay();
+      await this.updateBalance(); // refresh balance/asset/equity badges, not just name/icon
     }
   },
 

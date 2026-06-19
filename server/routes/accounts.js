@@ -1,8 +1,11 @@
 const { accountsFile, getTransactionsFile } = require('../config/paths');
 const { readJSON, writeJSON, generateId, parseBody, sendJSON } = require('../utils/helpers');
+const { accrueAll } = require('../utils/mortgage');
 
 const accounts = {
   getAccounts: (req, res) => {
+    // Bring any mortgage interest up to date before reporting balances
+    accrueAll();
     const accountsList = readJSON(accountsFile) || [];
     const active = accountsList.filter(a => a.active);
     active.sort((a, b) => {
@@ -28,6 +31,8 @@ const accounts = {
       type: body.type,
       startingBalance: parseFloat(body.startingBalance) || 0,
       assetValue: body.assetValue !== undefined ? parseFloat(body.assetValue) || 0 : null,
+      interestRate: body.interestRate !== undefined && body.interestRate !== null ? parseFloat(body.interestRate) || 0 : null,
+      lastInterestAccrual: body.type === 'mortgage' ? new Date().toISOString().split('T')[0] : null,
       icon: body.icon || null,
       active: true,
       sortOrder: maxOrder + 1,

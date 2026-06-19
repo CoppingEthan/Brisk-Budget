@@ -269,6 +269,7 @@
             <option value="savings">Savings Account</option>
             <option value="credit">Credit Card</option>
             <option value="loan">Loan</option>
+            <option value="mortgage">Mortgage</option>
             <option value="investment">Investment</option>
             <option value="asset">Asset</option>
           </select>
@@ -278,9 +279,14 @@
           <input type="number" id="startingBalanceInput" step="0.01" value="0">
         </div>
         <div class="form-group hidden" id="assetValueGroup">
-          <label for="assetValueInput">Asset Value (optional)</label>
+          <label for="assetValueInput" id="assetValueLabel">Asset Value (optional)</label>
           <input type="number" id="assetValueInput" step="0.01" value="0">
-          <small class="form-help">Current market value of the underlying asset</small>
+          <small class="form-help" id="assetValueHelp">Current market value of the underlying asset</small>
+        </div>
+        <div class="form-group hidden" id="mortgageRateGroup">
+          <label for="interestRateInput">Interest Rate (% per year)</label>
+          <input type="number" id="interestRateInput" step="0.01" min="0" value="0">
+          <small class="form-help">Interest is added automatically each month on the remaining balance</small>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-danger modal-delete hidden" id="deleteAccountModalBtn">Delete Account</button>

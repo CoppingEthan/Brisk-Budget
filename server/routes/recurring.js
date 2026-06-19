@@ -246,7 +246,7 @@ const recurring = {
       if (account.active === false) continue;
 
       const txs = (readJSON(getTransactionsFile(account.id)) || [])
-        .filter(tx => tx.category !== 'Transfer' && !tx.transferId);
+        .filter(tx => tx.category !== 'Transfer' && !tx.transferId && !tx.autoInterest);
 
       // Group by normalised payee
       const groups = {};
