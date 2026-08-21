@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <img src="assets/branding/dark/brisk-budget-logo.svg" alt="Brisk Budget Logo" width="320">
 </p>
@@ -52,7 +54,7 @@ For development with auto-reload: `npm run dev`
 
 ## Data Storage
 
-All data is stored locally in JSON files in the `data/` directory. The application automatically creates this folder and initializes it on first run. No external database required.
+All data is stored locally in JSON files in the `data/` directory. The application automatically creates this folder and initializes it on first run. No external database required. Automatic backups are stored in the `backups/` directory.
 
 ## Configuration
 
@@ -82,4 +84,3 @@ MIT License - see LICENSE file for details
 ## Author
 
 Ethan Copping
-
