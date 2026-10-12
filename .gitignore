@@ -139,8 +139,8 @@ dist
 .claude/
 
 # User data
-data/
-backups/
+/data
+/backups
 
 # Windows Crap
 Thumbs.db
@@ -153,3 +153,10 @@ Thumbs.db
 *.psd
 *.pbs
 *.indd
+# Test output
+test-results/
+playwright-report/
+.e2e-data/
+
+# Release notes are kept on GitHub Releases, not in the repo
+CHANGELOG.md

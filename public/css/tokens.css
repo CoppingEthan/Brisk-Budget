@@ -1,0 +1,97 @@
+/* Design tokens: the single source for colour, type, spacing and motion. */
+:root {
+  /* Brand & status */
+  --primary: #5b5ef0; /* white text on it stays above 4.5:1 */
+  --primary-hover: #4f46e5;
+  --primary-soft: rgba(99, 102, 241, 0.18);
+  --primary-glow: rgba(99, 102, 241, 0.3);
+  --primary-text: #a5b4fc;
+  --success: #22c55e;
+  --success-text: #4ade80;
+  --success-soft: rgba(34, 197, 94, 0.16);
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-text: #fa8585;
+  --danger-soft: rgba(239, 68, 68, 0.14);
+  --warning: #f59e0b;
+  --warning-text: #fbbf24;
+  --warning-soft: rgba(245, 158, 11, 0.16);
+  --forecast: #94a3b8;
+
+  /* Glass surfaces */
+  --glass: rgba(15, 23, 42, 0.72);
+  --glass-strong: rgba(13, 20, 36, 0.88);
+  --glass-light: rgba(30, 41, 59, 0.7);
+  --glass-lighter: rgba(51, 65, 85, 0.6);
+  --glass-hover: rgba(71, 85, 105, 0.45);
+  --glass-border: rgba(148, 163, 184, 0.2);
+  --glass-border-strong: rgba(148, 163, 184, 0.34);
+  --blur: blur(20px) saturate(1.15);
+  --field: rgba(51, 65, 85, 0.5);
+  --field-option: #1e293b;
+
+  /* Text */
+  --text: #f1f5f9;
+  --text-light: #cbd5e1;
+  /* Muted and faint text sit on translucent panels over a bright backdrop, so they are lighter
+     than they would be on solid dark: both stay readable (4.5:1) over the brightest part */
+  --text-muted: #b8c4d2;
+  --text-faint: #9ba8bb;
+
+  /* Type */
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Menlo, monospace;
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.75rem;
+
+  /* Space (4px grid) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+
+  /* Shape & depth */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.45);
+  --focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.55);
+
+  /* Layout */
+  --sidebar-width: 280px;
+  --header-height: 60px;
+  --content-max: none; /* panels use the full width beside the sidebar */
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --fast: 120ms;
+  --normal: 200ms;
+
+  /* Layers */
+  --z-sticky: 20;
+  --z-sidebar: 60;
+  --z-menu: 300;
+  --z-dialog: 400;
+  --z-toast: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --fast: 0ms;
+    --normal: 0ms;
+  }
+}

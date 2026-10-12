@@ -1,0 +1,353 @@
+/* App shell: sidebar + main area */
+.app {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  position: sticky;
+  top: 0;
+  width: var(--sidebar-width);
+  min-width: 220px;
+  max-width: 420px;
+  height: 100vh;
+  height: 100dvh;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-right: 1px solid var(--glass-border);
+  z-index: var(--z-sidebar);
+}
+
+.sidebar-scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-4) 0 var(--space-2);
+}
+
+/* The accounts list fills the rest of the sidebar, so the empty space below the last account is
+   a place to drop (the end of the list) */
+.sidebar-scroll > .accounts-list {
+  flex: 1 0 auto;
+}
+
+.sidebar-resize {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 2;
+}
+
+.sidebar-resize::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background var(--normal);
+}
+
+.sidebar-resize:hover::after,
+.sidebar-resize.dragging::after {
+  background: var(--primary);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-right: var(--space-3);
+  padding: 0.75rem var(--space-6);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  border-left: 3px solid transparent;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: background var(--fast), border-color var(--fast);
+}
+
+.nav-item:hover {
+  background: var(--glass-lighter);
+}
+
+.nav-item.active {
+  background: var(--primary-glow);
+  border-left-color: var(--primary);
+}
+
+.nav-item img {
+  width: 20px;
+  height: 20px;
+}
+
+.nav-item .badge {
+  margin-left: auto;
+}
+
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-6);
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-6);
+}
+
+.sidebar-section-header h2 {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sidebar-section-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.sidebar-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  border-top: 1px solid var(--glass-border);
+}
+
+.sidebar-footer .nav-item {
+  margin-right: 0;
+  padding: 0.6rem var(--space-3);
+  border-radius: var(--radius-sm);
+  border-left: none;
+  color: var(--text-light);
+  font-size: var(--text-base);
+}
+
+.sidebar-footer .nav-item.active {
+  color: var(--text);
+  background: var(--primary-soft);
+}
+
+.sidebar-footer .nav-item svg {
+  color: var(--text-muted);
+}
+
+.sidebar-version {
+  padding: var(--space-1) var(--space-3) 0;
+  font-size: var(--text-2xs);
+  color: var(--text-faint);
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* ---------- Main area ---------- */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: none;
+}
+
+.view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Focus moves here on each page change (for screen readers); no ring around the whole page */
+.view:focus-visible {
+  box-shadow: none;
+}
+
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-8);
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.page-title h1 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+.page-subtitle {
+  margin-top: 0.125rem;
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.page-body {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max);
+  padding: var(--space-6) var(--space-8) var(--space-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* ---------- Tablet ---------- */
+@media (max-width: 1279px) {
+  :root {
+    --sidebar-width: 248px;
+  }
+
+  .page-header,
+  .page-body {
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+}
+
+/* ---------- Phone / small tablet: sidebar becomes a drawer ---------- */
+@media (max-width: 1023px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(320px, 86vw) !important;
+    max-width: none;
+    transform: translateX(-102%);
+    transition: transform 260ms var(--ease);
+    box-shadow: var(--shadow-lg);
+    background: var(--glass-strong);
+  }
+
+  .app.nav-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-resize {
+    display: none;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-sidebar) - 1);
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 260ms var(--ease);
+  }
+
+  .app.nav-open .sidebar-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: calc(var(--z-sticky) + 1);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: calc(var(--header-height) + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) var(--space-4) 0;
+    background: var(--glass-strong);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .topbar-title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-md);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .page-header {
+    position: relative;
+    isolation: isolate;
+    padding: var(--space-5) var(--space-4);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: none;
+  }
+
+  /* Here the title sits straight on the backdrop, just where it is brightest: a soft shade that
+     fades out below the header keeps the title, subtitle and pills readable */
+  .page-header::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 -24px;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(4, 16, 28, 0.5), rgba(4, 16, 28, 0.44) calc(100% - 24px), rgba(4, 16, 28, 0));
+  }
+
+  .page-body {
+    padding: 0 var(--space-4) calc(var(--space-10) + env(safe-area-inset-bottom));
+    gap: var(--space-4);
+  }
+
+  .page-title h1 {
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 599px) {
+  .page-actions {
+    width: 100%;
+  }
+
+  .page-actions > .btn {
+    flex: 1;
+  }
+}
