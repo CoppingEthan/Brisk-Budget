@@ -62,6 +62,7 @@ Requires Node.js 20 or newer.
 - **Backups** - Download a backup any time, automatic hourly backups, and restore from the app. Backups from older versions upgrade automatically.
 - **Data check** - Finds and fixes problems such as transfers missing their other side.
 - **Optional password** - Off by default; set one in Settings › Security.
+- **AI agents** - Optionally let an AI assistant such as Claude read and update your data over MCP or an HTTP API, with access keys you control.
 - **Mobile friendly** - Works on phones and tablets, and installs as an app (PWA).
 
 ## Data Storage
@@ -94,6 +95,17 @@ Without a password, anyone who can reach Brisk Budget on your network can use it
 Without a password, Brisk Budget only answers to its IP address, `localhost` and local network names (such as `raspberrypi`, `budget.local`, `nas.lan` or `*.home.arpa`). This stops other websites from reaching it through your browser. If you open it by your own domain name, either set a password or add the name to `BRISK_ALLOWED_HOSTS`. A reverse proxy on the same machine works without either.
 
 Forgotten your password? Delete `data/auth.json` on the server and restart Brisk Budget.
+
+## AI Agents (MCP and API)
+
+Brisk Budget can let an AI assistant work with your data for you: for example, Claude reading your bank statements and adding them to the right accounts. It is off unless you turn it on in Settings › AI agents, where you also create access keys (full access or read only), revoke them, and see what agents have changed.
+
+The same tools are offered two ways, with the same names and arguments:
+
+- **MCP** at `/mcp` (Streamable HTTP), for Claude, Claude Code and other MCP apps. For Claude Code: `claude mcp add --transport http brisk-budget http://your-server:3000/mcp --header "Authorization: Bearer <key>"`
+- **HTTP API**: `GET /api/agent` lists the tools; `POST /api/agent/tools/<name>` runs one with its arguments as JSON. Send the key as `Authorization: Bearer <key>`. The key also works on every other API endpoint.
+
+Agents can change anything you can in the app, except signing in, the password and AI access itself. Treat a full-access key like a password, and use HTTPS if agents reach Brisk Budget over the internet.
 
 ## Development
 

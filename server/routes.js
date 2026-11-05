@@ -165,5 +165,16 @@ export function buildRoutes(app) {
   r.get('/api/data-check', () => s.integrity.scan());
   r.post('/api/data-check/fix', ({ body }) => s.integrity.fix(body));
 
+  // ----- AI agents -----
+  // Turning access on and managing access keys is for a person in the app; agents are refused
+  r.get('/api/agents', () => s.agents.status());
+  r.put('/api/agents', ({ body }) => s.agents.setEnabled(body));
+  r.post('/api/agents/keys', ({ body }) => created(s.agents.createKey(body)));
+  r.delete('/api/agents/keys/:id', ({ params }) => s.agents.revokeKey(params.id));
+  r.delete('/api/agents/activity', () => s.agents.clearActivity());
+  // What agents use: the tool list, and running a tool (the same tools MCP offers at /mcp)
+  r.get('/api/agent', ({ req }) => app.gateway.catalogue(req.agent));
+  r.post('/api/agent/tools/:name', ({ req, params, body }) => app.gateway.runTool(params.name, body, req.agent, 'api'), { limit: 25 * MB });
+
   return r;
 }

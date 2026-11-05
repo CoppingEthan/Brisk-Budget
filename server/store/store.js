@@ -18,6 +18,9 @@ export const COLLECTION_FILES = {
 };
 
 export const AUTH_FILE = 'auth.json';
+// AI agent access: on/off, access keys (only their hashes) and recent activity. Like the
+// password, it belongs to this server, so it's never in backups.
+export const AGENTS_FILE = 'agents.json';
 export const TX_FILE_RE = /^([A-Za-z0-9_-]{1,64})\.json$/;
 export const ICON_FILE_RE = /^[A-Za-z0-9_-]{1,80}\.(jpg|png|webp)$/;
 
@@ -120,6 +123,11 @@ export class Store {
     }
     data.auth = auth.missing ? null : auth.value;
 
+    // A damaged agents file only switches AI access off; it never stops the app starting
+    const agents = readJSONFile(path.join(this.dataDir, AGENTS_FILE));
+    if (agents.error || agents.unreadable) this.log?.warn(`${AGENTS_FILE} couldn't be read, so AI agent access is off until it's set up again`);
+    data.agents = agents.value && typeof agents.value === 'object' && !Array.isArray(agents.value) ? agents.value : null;
+
     // Only a backup in the same data format can stand in for a damaged file
     const metaDamaged = problems.some(p => p.key === 'meta');
     const schema = metaDamaged ? null : (Number.isInteger(data.meta?.schemaVersion) ? data.meta.schemaVersion : 0);
@@ -174,6 +182,7 @@ export class Store {
   save(...keys) {
     this.commit(keys.map(key => {
       if (key === 'auth') return { key, file: path.join(this.dataDir, AUTH_FILE), text: this.data.auth ? json(this.data.auth) : null };
+      if (key === 'agents') return { key, file: path.join(this.dataDir, AGENTS_FILE), text: this.data.agents ? json(this.data.agents) : null };
       return { key, file: this.collectionPath(key), text: json(this.data[key]) };
     }));
   }
@@ -219,6 +228,7 @@ export class Store {
       const result = readJSONFile(f.file);
       if (result.error || result.unreadable) continue;
       if (f.key === 'auth') this.data.auth = result.missing ? null : result.value;
+      else if (f.key === 'agents') this.data.agents = result.missing ? null : result.value;
       else if (f.key) { if (!result.missing) this.data[f.key] = result.value; }
       else if (f.tx) this.data.transactions[f.tx] = result.missing ? [] : result.value;
     }

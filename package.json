@@ -1,6 +1,6 @@
 {
   "name": "brisk-budget",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Brisk Budget - A lightweight, self-hosted personal finance tracker",
   "type": "module",
   "main": "server/index.js",

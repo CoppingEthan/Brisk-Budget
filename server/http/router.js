@@ -16,7 +16,7 @@ export class Router {
         return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       })
       .join('/');
-    this.routes.push({ method, regex: new RegExp(`^${source}/?$`), keys, handler, options });
+    this.routes.push({ method, pattern, regex: new RegExp(`^${source}/?$`), keys, handler, options });
     return this;
   }
 
@@ -24,6 +24,11 @@ export class Router {
   post(pattern, handler, options) { return this.add('POST', pattern, handler, options); }
   put(pattern, handler, options) { return this.add('PUT', pattern, handler, options); }
   delete(pattern, handler, options) { return this.add('DELETE', pattern, handler, options); }
+
+  // Every endpoint as { method, pattern }, for the list agents can ask for
+  list() {
+    return this.routes.map(r => ({ method: r.method, pattern: r.pattern }));
+  }
 
   match(method, pathname) {
     let pathMatched = false;

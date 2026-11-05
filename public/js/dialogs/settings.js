@@ -16,6 +16,7 @@ const TABS = [
   { id: 'accounts', label: 'Accounts', icon: 'archive' },
   { id: 'backups', label: 'Backups', icon: 'database' },
   { id: 'data', label: 'Data check', icon: 'activity' },
+  { id: 'agents', label: 'AI agents', icon: 'sparkles' },
   { id: 'security', label: 'Security', icon: 'lock' },
   { id: 'about', label: 'About & updates', icon: 'info' }
 ];
@@ -447,6 +448,125 @@ const PANELS = {
     on(panel, 'click', '[data-fix]', async (e, el) => busy(el, async () => {
       try { const res = await api.fixData({ ids: [el.closest('[data-issue]').dataset.issue] }); await changed(); draw(res); } catch (err) { toastError(err); }
     }));
+  },
+
+  // ---------- AI agents ----------
+  async agents(section, { newKey = null } = {}) {
+    const panel = fresh(section);
+    const status = await api.agents();
+    const origin = location.origin;
+    const keyText = newKey?.key || '<your access key>';
+    const claudeCommand = `claude mcp add --transport http brisk-budget ${origin}/mcp --header "Authorization: Bearer ${keyText}"`;
+    const curlExample = `curl ${origin}/api/agent/tools/get_overview -X POST -H "Authorization: Bearer ${keyText}" -H "Content-Type: application/json" -d "{}"`;
+    const codeBlock = (text, label) => html`
+      <div class="code-copy">
+        <code data-code>${text}</code>
+        <button type="button" class="icon-btn sm" data-copy aria-label="Copy ${label}" title="Copy">${icon('file')}</button>
+      </div>`;
+    render(panel, html`
+      <h3>AI agents</h3>
+      <p class="panel-hint">Let an AI assistant such as Claude read and update your accounts for you, over MCP or a plain HTTP API. Both offer the same tools. Off unless you turn it on here.</p>
+      <label class="switch" style="margin-bottom:var(--space-4)">
+        <input type="checkbox" data-enable ${status.enabled ? 'checked' : ''}>
+        <span class="switch-track"></span>
+        <span class="switch-text">Allow AI agents<small>Agents sign in with an access key you create below. Signing in, your password and these settings stay yours alone.</small></span>
+      </label>
+      ${status.enabled ? html`<div class="alert warning" style="margin-bottom:var(--space-5)">${icon('alert')}<span>An agent with a full-access key can change or delete anything you can. Only give keys to tools you trust, and revoke any you stop using. Backups are kept as usual, and what agents change is listed below.</span></div>` : ''}
+      ${newKey ? html`
+        <div class="settings-section key-reveal">
+          <h4>${icon('check', { size: 16 })} Access key for “${newKey.name}”</h4>
+          <p>Copy it now: it won't be shown again. Anyone with this key can use Brisk Budget${newKey.access === 'read' ? ' to read your data' : ''}.</p>
+          ${codeBlock(newKey.key, 'access key')}
+        </div>` : ''}
+      <div class="settings-section">
+        <h4>Access keys</h4>
+        ${status.keys.length ? html`<div class="list">${status.keys.map(k => html`
+          <div class="list-row" data-key="${k.id}">
+            <span class="avatar sm">${icon(k.access === 'read' ? 'search' : 'bolt', { size: 14 })}</span>
+            <div class="list-row-main">
+              <span class="list-row-title">${k.name} <span class="pill ${k.access === 'read' ? '' : 'warning'}" style="margin-left:var(--space-1)">${k.access === 'read' ? 'Read only' : 'Full access'}</span></span>
+              <span class="list-row-meta">Ends …${k.hint} · created ${dateTime(k.createdAt)} · ${k.lastUsedAt ? `last used ${dateTime(k.lastUsedAt)}` : 'not used yet'}</span>
+            </div>
+            <button type="button" class="btn btn-danger-ghost btn-sm" data-revoke>Revoke</button>
+          </div>`)}</div>` : html`<p class="muted">No access keys yet.</p>`}
+        <form class="key-form" data-key-form novalidate>
+          <label class="field"><span class="field-label">Name</span><input class="input" name="name" placeholder="e.g. Claude on my laptop" maxlength="60" required></label>
+          <label class="field"><span class="field-label">Access</span>
+            <select class="select" name="access"><option value="full">Full access</option><option value="read">Read only</option></select>
+          </label>
+          <button type="submit" class="btn btn-primary">${icon('plus')}Create access key</button>
+        </form>
+      </div>
+      <div class="settings-section">
+        <h4>Connecting an agent</h4>
+        <p><strong>MCP</strong> (Claude, Claude Code and other MCP apps): <code>${origin}/mcp</code>, with the key sent as <code>Authorization: Bearer &lt;key&gt;</code>. For Claude Code:</p>
+        ${codeBlock(claudeCommand, 'Claude Code command')}
+        <p style="margin-top:var(--space-4)"><strong>HTTP API</strong>: <code>GET ${origin}/api/agent</code> lists the tools; <code>POST ${origin}/api/agent/tools/&lt;name&gt;</code> runs one with its arguments as JSON. The key also works on every other API endpoint.</p>
+        ${codeBlock(curlExample, 'example request')}
+      </div>
+      <div class="settings-section">
+        <div class="settings-toolbar" style="justify-content:space-between">
+          <h4 style="margin:0">Recent changes by agents</h4>
+          ${status.activity.length ? html`<button type="button" class="btn btn-ghost btn-sm" data-clear>Clear</button>` : ''}
+        </div>
+        ${status.activity.length ? html`<div class="list agent-activity">${status.activity.map(a => html`
+          <div class="list-row">
+            <span class="avatar sm ${a.ok ? '' : 'danger'}">${icon(a.ok ? 'check' : 'x', { size: 14 })}</span>
+            <div class="list-row-main">
+              <span class="list-row-title"><code>${a.action}</code></span>
+              <span class="list-row-meta">${dateTime(a.at)} · ${a.key} · ${a.via === 'mcp' ? 'MCP' : 'API'}${a.ok ? '' : ` · failed: ${a.error || ''}`}</span>
+            </div>
+          </div>`)}</div>` : html`<p class="muted">Nothing yet.</p>`}
+      </div>
+    `);
+    const again = (opts) => PANELS.agents(section, opts);
+    $('[data-enable]', panel).addEventListener('change', async (e) => {
+      try {
+        await api.setAgentAccess(e.target.checked);
+        toast(e.target.checked ? 'AI agents can now sign in with an access key' : 'AI agent access is off', { kind: 'success' });
+        again();
+      } catch (err) {
+        e.target.checked = !e.target.checked;
+        toastError(err);
+      }
+    });
+    const form = $('[data-key-form]', panel);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      await busy(event.submitter, async () => {
+        try {
+          const created = await api.createAgentKey({ name: form.name.value, access: form.access.value });
+          again({ newKey: created });
+        } catch (err) {
+          toastError(err);
+        }
+      });
+    });
+    on(panel, 'click', '[data-revoke]', async (event, el) => {
+      const row = el.closest('[data-key]');
+      const name = row.querySelector('.list-row-title').firstChild.textContent.trim();
+      const ok = await confirmDialog({ title: 'Revoke access key', message: `Revoke “${name}”?`, detail: 'Anything using this key stops working straight away.', confirmLabel: 'Revoke' });
+      if (!ok) return;
+      try { await api.revokeAgentKey(row.dataset.key); toast(`Revoked “${name}”`); again(); } catch (err) { toastError(err); }
+    });
+    on(panel, 'click', '[data-copy]', async (event, el) => {
+      const code = el.parentElement.querySelector('[data-code]');
+      try {
+        await navigator.clipboard.writeText(code.textContent);
+        toast('Copied', { kind: 'success' });
+      } catch {
+        // Copying needs HTTPS in most browsers: select the text so Ctrl+C works instead
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+        toast('Selected: press Ctrl+C (or Cmd+C) to copy');
+      }
+    });
+    $('[data-clear]', panel)?.addEventListener('click', async () => {
+      try { await api.clearAgentActivity(); again(); } catch (err) { toastError(err); }
+    });
   },
 
   // ---------- Security ----------

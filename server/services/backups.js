@@ -217,6 +217,7 @@ export function createBackups(app) {
     }
     sanitizeRestored(data, { today: clock.today(), nowIso: clock.now().toISOString() });
     data.auth = store.data.auth; // the password belongs to this server, not to the backup
+    data.agents = store.data.agents; // so do AI agent access keys
     const safety = create('safety', 'pre-restore').name;
     store.writeAll(data);
     app.services.housekeeping.run();

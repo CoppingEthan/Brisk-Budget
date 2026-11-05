@@ -148,6 +148,11 @@ export const api = {
   // Backups & data
   backups: () => api.get('/api/backups'),
   createBackup: () => api.post('/api/backups'),
+  agents: () => api.get('/api/agents'),
+  setAgentAccess: (enabled) => api.put('/api/agents', { enabled }),
+  createAgentKey: (body) => api.post('/api/agents/keys', body),
+  revokeAgentKey: (id) => api.del(`/api/agents/keys/${enc(id)}`),
+  clearAgentActivity: () => api.del('/api/agents/activity'),
   deleteBackup: (name) => api.del(`/api/backups/${enc(name)}`),
   restoreSavedBackup: (name) => api.post(`/api/backups/${enc(name)}/restore`),
   restoreBackupFile: (file) => request('POST', '/api/backup/restore', file, { raw: true }),

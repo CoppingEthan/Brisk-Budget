@@ -43,9 +43,9 @@ export function sendJSON(req, res, status, data, headers = {}) {
   send(req, res, status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
 }
 
-export function sendError(req, res, err, log) {
+export function sendError(req, res, err, log, headers = {}) {
   if (err instanceof HttpError) {
-    sendJSON(req, res, err.status, { error: err.message, ...(err.details ? { details: err.details } : {}) });
+    sendJSON(req, res, err.status, { error: err.message, ...(err.details ? { details: err.details } : {}) }, headers);
     return;
   }
   log.error(`${req.method} ${req.url} failed:`, err.stack || err.message);

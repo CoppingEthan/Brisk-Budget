@@ -2892,6 +2892,73 @@ button.tx-payee {
   margin-bottom: var(--space-4);
 }
 
+/* AI agents: copyable keys and commands, the new-key form and the activity list */
+.code-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+}
+
+.code-copy code {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: all;
+}
+
+.key-reveal {
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  border-radius: var(--radius);
+  background: var(--success-soft);
+}
+
+.key-reveal h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--success-text);
+}
+
+.key-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.key-form .field {
+  flex: 1 1 200px;
+}
+
+.key-form .field:nth-child(2) {
+  flex: 0 1 160px;
+}
+
+.agent-activity {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.agent-activity .avatar.danger {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+
+.agent-activity code {
+  font-size: var(--text-xs);
+}
+
 @media (max-width: 760px) {
   .settings {
     grid-template-columns: 1fr;

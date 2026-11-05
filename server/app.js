@@ -26,8 +26,11 @@ import { createAuth } from './services/auth.js';
 import { createUpdates } from './services/updates.js';
 import { createHousekeeping } from './services/housekeeping.js';
 import { createSettings, createNotices } from './services/settings.js';
+import { createAgents, bearerKey } from './services/agents.js';
+import { createGateway, personOnly } from './agent/gateway.js';
 
 const JSON_LIMIT = 4 * 1024 * 1024;
+const MCP_LIMIT = 25 * 1024 * 1024; // room for a large statement import
 const MUTATING = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 
 function freshData() {
@@ -70,6 +73,7 @@ export function createApp(overrides = {}) {
   services.auth = createAuth(app);
   services.updates = createUpdates(app);
   services.housekeeping = createHousekeeping(app);
+  services.agents = createAgents(app);
   app.settings = createSettings(app);
   app.notices = createNotices(app);
   backupsForRecovery.findFile = (rel, schema) => services.backups.findFile(rel, schema);
@@ -77,7 +81,7 @@ export function createApp(overrides = {}) {
   // ----- Load data, upgrading anything written by an older version -----
   if (store.isFresh()) {
     store.load();
-    store.writeAll({ ...freshData(), auth: store.data.auth });
+    store.writeAll({ ...freshData(), auth: store.data.auth, agents: store.data.agents });
     log.info('Started with a fresh data folder');
   } else {
     store.load();
@@ -119,6 +123,7 @@ export function createApp(overrides = {}) {
   services.housekeeping.run();
 
   const routes = buildRoutes(app);
+  app.gateway = createGateway(app, { routes, today: () => clock.today() });
   const statics = createStatic({ publicDir: PUBLIC_DIR, dev: config.dev, version: APP_VERSION });
   const hostAllowed = createHostCheck({ allowedHosts: config.allowedHosts });
   const refusedHosts = new Set();
@@ -143,11 +148,33 @@ export function createApp(overrides = {}) {
     if (!match) throw notFound('No such API endpoint');
     if (match.methodNotAllowed) throw new HttpError(405, 'Method not allowed');
     const { route, params } = match;
-    // A custom header can't be sent by another website without permission, which stops pages
-    // elsewhere on the internet from changing data behind your back.
-    if (MUTATING.has(req.method) && req.headers['x-brisk-request'] !== '1') throw forbidden('Missing request header');
-    if (!route.options.public && !services.auth.isAuthenticated(req)) throw unauthorized();
+    // An AI agent signs in with an access key instead of the password. Browsers never send one
+    // by themselves, so the cross-site check below isn't needed for it.
+    const agent = services.agents.authenticate(req);
+    req.agent = agent;
+    const toolCall = url.pathname.startsWith('/api/agent/');
+    if (agent) {
+      if (personOnly(url.pathname)) throw forbidden('Signing in, the password and AI agent access can only be changed by a person in the app.');
+      if (agent.access === 'read' && MUTATING.has(req.method) && !toolCall) throw forbidden("This access key is read-only, so it can't change anything.");
+    } else {
+      // A custom header can't be sent by another website without permission, which stops pages
+      // elsewhere on the internet from changing data behind your back.
+      if (MUTATING.has(req.method) && req.headers['x-brisk-request'] !== '1') throw forbidden('Missing request header');
+      if (!route.options.public && !services.auth.isAuthenticated(req)) throw unauthorized();
+    }
+    // Changes an agent makes through the plain API go in the activity log (tools log themselves)
+    const logged = agent && MUTATING.has(req.method) && !toolCall;
+    const action = `${req.method} ${url.pathname}`;
+    try {
+      await runRoute(req, res, url, route, params);
+      if (logged) services.agents.record(agent, { via: 'api', action, ok: true });
+    } catch (err) {
+      if (logged) services.agents.record(agent, { via: 'api', action, ok: false, error: String(err.message).slice(0, 200) });
+      throw err;
+    }
+  }
 
+  async function runRoute(req, res, url, route, params) {
     const limit = route.options.limit || JSON_LIMIT;
     let body = {};
     let raw = null;
@@ -165,6 +192,18 @@ export function createApp(overrides = {}) {
     }
   }
 
+  // MCP for AI agents: JSON-RPC messages POSTed to /mcp with an access key
+  async function handleMcp(req, res) {
+    res.setHeader('X-Brisk-Version', APP_VERSION);
+    if (req.method !== 'POST') throw new HttpError(405, 'Send MCP messages with POST');
+    const agent = services.agents.authenticate(req);
+    if (!agent) throw unauthorized('Send an access key as "Authorization: Bearer <key>". Create one in Brisk Budget under Settings › AI agents.');
+    const payload = await readJSON(req, MCP_LIMIT);
+    const reply = await app.gateway.handleMcp(payload, agent);
+    if (reply === null) send(req, res, 202, '');
+    else sendJSON(req, res, 200, reply);
+  }
+
   async function handler(req, res) {
     let url;
     try {
@@ -173,8 +212,20 @@ export function createApp(overrides = {}) {
       send(req, res, 400, 'Bad request', { 'Content-Type': 'text/plain' });
       return;
     }
-    if (!services.auth.enabled() && !hostAllowed(req.headers.host) && !fromLocalProxy(req)) {
+    // A request with an access key is checked by the key, wherever it comes from
+    const withKey = bearerKey(req) !== null;
+    if (!services.auth.enabled() && !withKey && !hostAllowed(req.headers.host) && !fromLocalProxy(req)) {
       refuseHost(req, res, url);
+      return;
+    }
+    if (url.pathname === '/mcp') {
+      try {
+        await handleMcp(req, res);
+      } catch (err) {
+        if (!res.headersSent) sendError(req, res, err, log, err.status === 405 ? { Allow: 'POST' } : {});
+        else res.end();
+        if (!req.complete) req.resume();
+      }
       return;
     }
     if (url.pathname.startsWith('/api/')) {
