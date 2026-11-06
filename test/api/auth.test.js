@@ -108,10 +108,14 @@ describe('password protection', () => {
     assert.match([].concat(res.headers['set-cookie']).join(';'), /Secure/);
   });
 
-  it('logout clears the cookie', async () => {
-    const res = await s.post('/api/auth/logout', {}, { cookie });
+  it('logout clears the cookie and ends that session on the server, leaving others signed in', async () => {
+    const other = sessionFrom(await s.post('/api/auth/login', { password: PASSWORD }, { cookie: null }));
+    assert.equal((await s.get('/api/accounts', { cookie: other })).status, 200);
+    const res = await s.post('/api/auth/logout', {}, { cookie: other });
     assert.equal(res.status, 200);
     assert.match([].concat(res.headers['set-cookie']).join(';'), /brisk_session=;.*Max-Age=0/);
+    assert.equal((await s.get('/api/accounts', { cookie: other })).status, 401, 'a copy of the signed-out cookie no longer works');
+    assert.equal((await s.get('/api/accounts', { cookie })).status, 200, 'other sessions stay signed in');
   });
 
   it('the password is never part of a backup, and survives restoring one', async () => {
@@ -161,5 +165,37 @@ describe('password protection: brute force limit', () => {
     const blocked = await s.post('/api/auth/login', { password: PASSWORD });
     assert.equal(blocked.status, 429);
     assert.match(blocked.data.error, /15 minutes/);
+  });
+});
+
+describe('password protection: guessing', () => {
+  let s;
+  before(async () => {
+    s = await freshServer({ trustProxy: true });
+    await s.ok.put('/api/auth/password', { newPassword: PASSWORD });
+  });
+  after(async () => { await s.close(); });
+
+  const tryPassword = (password, address, cookie = null) =>
+    s.post('/api/auth/login', { password }, { cookie, headers: { 'X-Forwarded-For': address } });
+
+  it("counts guesses sent all at once, so a burst can't get past the limit", async () => {
+    const burst = await Promise.all(Array.from({ length: 40 }, () => tryPassword('a wrong guess', '198.51.100.1')));
+    const checked = burst.filter(r => r.status === 401).length;
+    assert.equal(checked, 10, `${checked} of 40 guesses were checked`);
+    assert.equal((await tryPassword(PASSWORD, '198.51.100.1')).status, 429, 'even the right password waits');
+  });
+
+  it("can't lock out a browser that has signed in here before", async () => {
+    const first = await tryPassword(PASSWORD, '192.0.2.10');
+    assert.equal(first.status, 200);
+    const device = [].concat(first.headers['set-cookie']).find(c => c.startsWith('brisk_device='));
+    assert.match(device, /Path=\/api\/auth/);
+    // Guessing spread over many addresses fills the overall limit
+    for (let i = 0; i < 25; i++) {
+      await Promise.all(Array.from({ length: 8 }, () => tryPassword('a wrong guess', `203.0.113.${i}`)));
+    }
+    assert.equal((await tryPassword(PASSWORD, '192.0.2.99')).status, 429, 'a new browser has to wait');
+    assert.equal((await tryPassword(PASSWORD, '192.0.2.99', device.split(';')[0])).status, 200, 'the owner can still sign in');
   });
 });

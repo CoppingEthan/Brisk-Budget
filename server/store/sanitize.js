@@ -4,7 +4,7 @@
 import { isISODate } from '../../public/js/shared/dates.js';
 import { round2 } from '../../public/js/shared/money.js';
 import { normaliseFrequency } from '../../public/js/shared/recurrence.js';
-import { ACCOUNT_TYPES, DEFAULT_SETTINGS, TRANSFER_CATEGORY_ID, UNCATEGORIZED_ID, systemCategory } from './defaults.js';
+import { ACCOUNT_TYPES, CATEGORY_PALETTE, DEFAULT_SETTINGS, TRANSFER_CATEGORY_ID, UNCATEGORIZED_ID, systemCategory } from './defaults.js';
 import { ICON_FILE_RE } from './store.js';
 import { isSafeId, newId } from '../lib/ids.js';
 
@@ -39,7 +39,7 @@ export function sanitizeData(data, { today, nowIso }) {
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     if (typeof s[key] !== typeof value) { s[key] = value; fix(); }
   }
-  setIf(s, 'currencySymbol', s.currencySymbol.trim() && s.currencySymbol.length <= 4, '£');
+  setIf(s, 'currencySymbol', s.currencySymbol.trim() && s.currencySymbol.length <= 4 && !/[<>]/.test(s.currencySymbol), '£');
   setIf(s, 'name', s.name.length <= 60, s.name.slice(0, 60));
 
   // Only structural problems are repaired here. Things that are merely inconsistent (a missing
@@ -55,6 +55,8 @@ export function sanitizeData(data, { today, nowIso }) {
     seenIds.add(c.id);
     setIf(c, 'name', isText(c.name) && c.name.trim(), 'Category');
     setIf(c, 'emoji', isText(c.emoji) && c.emoji, '📁');
+    // Colours go into the page's styles, so only "#rrggbb" (what the app itself saves) is kept
+    setIf(c, 'color', isText(c.color) && /^#[0-9a-fA-F]{6}$/.test(c.color), CATEGORY_PALETTE[seenIds.size % CATEGORY_PALETTE.length]);
     setIf(c, 'sortOrder', Number.isFinite(c.sortOrder), 0);
     setIf(c, 'subcategories', Array.isArray(c.subcategories), []);
     c.subcategories = cleanList(c.subcategories, sub => isObject(sub) && isText(sub.name) && sub.name.trim());

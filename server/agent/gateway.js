@@ -18,7 +18,14 @@ const INSTRUCTIONS = [
 ].join(' ');
 
 // Paths only a person signed in to the app may use: signing in, the password, and AI access itself
-export const personOnly = (path) => path.startsWith('/api/auth/') || path === '/api/agents' || path.startsWith('/api/agents/');
+// What only a person can do: signing in, the password, AI agent access, and deleting backups (so
+// whatever an agent does, the backups to undo it are still there)
+export const personOnly = (path, method = 'GET') =>
+  path.startsWith('/api/auth/') || path === '/api/agents' || path.startsWith('/api/agents/')
+  || (method === 'DELETE' && (path === '/api/backups' || path.startsWith('/api/backups/')));
+export const PERSON_ONLY_MESSAGE = 'Signing in, the password, AI agent access and deleting backups are for a person in the app only.';
+// The most messages one MCP request can carry
+const MAX_BATCH = 20;
 
 export function createGateway(app, { routes, today }) {
   const allowedFor = (agent) => TOOLS.filter(t => agent?.access !== 'read' || t.readOnly);
@@ -29,7 +36,7 @@ export function createGateway(app, { routes, today }) {
     if (typeof path !== 'string' || !path.startsWith('/api/')) throw badRequest('path must start with /api/');
     const url = new URL(path, 'http://brisk.local');
     for (const [k, v] of Object.entries(query || {})) if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
-    if (personOnly(url.pathname)) throw forbidden('Signing in, the password and AI agent access can only be changed by a person in the app.');
+    if (personOnly(url.pathname, verb)) throw forbidden(PERSON_ONLY_MESSAGE);
     if (url.pathname === '/api/agent' || url.pathname.startsWith('/api/agent/')) throw badRequest('Call tools directly rather than through api_request');
     if (agent?.access === 'read' && MUTATING.has(verb)) throw forbidden('This access key is read-only, so it can\'t change anything.');
     const match = routes.match(verb, url.pathname);
@@ -47,7 +54,7 @@ export function createGateway(app, { routes, today }) {
   }
 
   const endpoints = () => routes.list()
-    .filter(r => !personOnly(r.pattern) && !r.pattern.startsWith('/api/agent'))
+    .filter(r => !personOnly(r.pattern, r.method) && !r.pattern.startsWith('/api/agent'))
     .map(r => `${r.method} ${r.pattern}`);
 
   // Check a tool's arguments enough to give a clear message; the endpoint checks the rest
@@ -59,6 +66,13 @@ export function createGateway(app, { routes, today }) {
     const known = Object.keys(tool.input.properties || {});
     const unknown = Object.keys(args).filter(k => !known.includes(k));
     if (unknown.length) throw badRequest(`Unknown argument${unknown.length > 1 ? 's' : ''}: ${unknown.join(', ')}. ${tool.name} takes: ${known.join(', ') || 'nothing'}`);
+    // Arguments with a fixed set of choices must be one of them (any case for words)
+    for (const [key, value] of Object.entries(args)) {
+      const choices = tool.input.properties[key]?.enum;
+      if (!choices || value === undefined) continue;
+      const same = (c) => c === value || (typeof c === 'string' && typeof value === 'string' && c.toLowerCase() === value.toLowerCase());
+      if (!choices.some(same)) throw badRequest(`${key} must be one of: ${choices.join(', ')}`);
+    }
     return args;
   }
 
@@ -71,7 +85,7 @@ export function createGateway(app, { routes, today }) {
     // Only calls that can change something go in the activity log
     const changes = agent && !tool.readOnly && clean.dryRun !== true
       && !(tool.name === 'api_request' && String(clean.method).toUpperCase() === 'GET');
-    const action = tool.name === 'api_request' ? `api_request ${String(clean.method).toUpperCase()} ${clean.path}` : name;
+    const action = (tool.name === 'api_request' ? `api_request ${String(clean.method).toUpperCase()} ${clean.path}` : name).slice(0, 200);
     try {
       const result = await tool.run(clean, api, { endpoints, today });
       if (changes) app.services.agents.record(agent, { via, action, ok: true });
@@ -102,7 +116,8 @@ export function createGateway(app, { routes, today }) {
     }
     const isNotification = !('id' in message);
     if (isNotification) return null; // notifications/initialized and friends need no reply
-    const { id, method, params = {} } = message;
+    const { id, method } = message;
+    const params = message.params && typeof message.params === 'object' && !Array.isArray(message.params) ? message.params : {};
     const ok = (result) => ({ jsonrpc: '2.0', id, result });
     switch (method) {
       case 'initialize': {
@@ -139,7 +154,13 @@ export function createGateway(app, { routes, today }) {
   async function handleMcp(payload, agent) {
     if (Array.isArray(payload)) {
       if (!payload.length) return rpcError(null, -32600, 'Empty batch');
-      const replies = (await Promise.all(payload.map(m => answer(m, agent)))).filter(Boolean);
+      if (payload.length > MAX_BATCH) return rpcError(null, -32600, `A batch can hold up to ${MAX_BATCH} messages`);
+      // One at a time, so a batch can't pile up work all at once
+      const replies = [];
+      for (const message of payload) {
+        const reply = await answer(message, agent);
+        if (reply) replies.push(reply);
+      }
       return replies.length ? replies : null;
     }
     return answer(payload, agent);

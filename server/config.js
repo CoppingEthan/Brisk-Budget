@@ -20,6 +20,8 @@ export function loadConfig(env = process.env) {
     updateCheck: env.BRISK_UPDATE_CHECK !== '0',
     trustProxy: env.BRISK_TRUST_PROXY === '1',
     allowedHosts: env.BRISK_ALLOWED_HOSTS || '',
+    // Without a password, only devices on a private or local network are answered unless this is set
+    openWithoutPassword: env.BRISK_OPEN_WITHOUT_PASSWORD === '1',
     quiet: env.BRISK_QUIET === '1'
   };
 }

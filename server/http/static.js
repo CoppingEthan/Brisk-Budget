@@ -112,6 +112,11 @@ export function createStatic({ publicDir, dev, version }) {
     return entry;
   }
 
+  // The app's files by their exact names. Only these are served, so on a disk that ignores case
+  // (Windows, macOS) /INDEX.HTML or an alternative name for a file isn't a second way in.
+  let files = null;
+  const known = () => (files && !dev ? files : (files = new Set(listFiles(publicDir))));
+
   function resolve(pathname) {
     let rel;
     try {
@@ -122,6 +127,7 @@ export function createStatic({ publicDir, dev, version }) {
     if (rel === '/' || rel === '') rel = '/index.html';
     rel = path.posix.normalize(rel).replace(/^\/+/, '');
     if (!rel || rel.startsWith('..') || rel.includes('\0') || rel.split('/').some(p => p.startsWith('.'))) return null;
+    if (!known().has(rel)) return null;
     const full = path.join(publicDir, rel);
     if (!full.startsWith(publicDir + path.sep)) return null;
     try {
@@ -150,7 +156,8 @@ export function createStatic({ publicDir, dev, version }) {
       ETag: entry.etag,
       'Cache-Control': rel === 'index.html' || dev ? 'no-cache' : versioned ? 'public, max-age=31536000, immutable' : 'public, max-age=86400'
     };
-    if (rel === 'index.html') headers['Content-Security-Policy'] = CSP;
+    // Any page gets the content rules, not just the app's own
+    if (entry.type.startsWith('text/html')) headers['Content-Security-Policy'] = CSP;
     if (req.headers['if-none-match'] === entry.etag) {
       res.writeHead(304, headers);
       res.end();

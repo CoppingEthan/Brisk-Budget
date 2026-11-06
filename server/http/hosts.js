@@ -41,14 +41,6 @@ export function createHostCheck({ allowedHosts = '' } = {}) {
   };
 }
 
-const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
-
-// A reverse proxy on the same machine (nginx, Caddy) passes on whatever name people use
-export function fromLocalProxy(req) {
-  if (!LOOPBACK.has(req.socket.remoteAddress)) return false;
-  return !!(req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.headers.forwarded);
-}
-
 export function refusedMessage(header) {
   const name = hostName(header) || String(header);
   return `Brisk Budget didn't answer because it doesn't recognise the address "${name}". ` +

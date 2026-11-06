@@ -85,6 +85,7 @@ These environment variables are optional. If you installed with the install comm
 | `BRISK_BACKUPS_DIR` | `./backups` | Where backups are stored |
 | `BRISK_TRUST_PROXY` | off | Set to `1` behind a reverse proxy, so sign-in limits apply per visitor |
 | `BRISK_ALLOWED_HOSTS` | none | Extra web addresses Brisk Budget answers to without a password, e.g. `budget.example.com, *.home.example.com` (see Security) |
+| `BRISK_OPEN_WITHOUT_PASSWORD` | off | Set to `1` to answer devices outside your own network while no password is set (not recommended; see Security) |
 | `TZ` | the server's | Time zone for "today", e.g. `Europe/London`. Worth setting if your server runs on UTC |
 | `BRISK_UPDATE_CHECK` | on | Set to `0` to never contact GitHub for update checks |
 
@@ -92,7 +93,9 @@ These environment variables are optional. If you installed with the install comm
 
 Without a password, anyone who can reach Brisk Budget on your network can use it. Set a password in Settings › Security if other people share your network, and put Brisk Budget behind HTTPS (for example a reverse proxy) before exposing it to the internet.
 
-Without a password, Brisk Budget only answers to its IP address, `localhost` and local network names (such as `raspberrypi`, `budget.local`, `nas.lan` or `*.home.arpa`). This stops other websites from reaching it through your browser. If you open it by your own domain name, either set a password or add the name to `BRISK_ALLOWED_HOSTS`. A reverse proxy on the same machine works without either.
+Until a password is set, Brisk Budget only answers devices on your own network: your home or office network, a VPN such as Tailscale, or a reverse proxy on one of those. So a server that can be reached from the internet can't be read, or have a password set on it by someone else, before you set one. To set one on a server you can't reach locally, use an SSH tunnel (`ssh -L 3000:localhost:3000 your-server`, then open `http://localhost:3000`).
+
+Without a password, Brisk Budget only answers to its IP address, `localhost` and local network names (such as `raspberrypi`, `budget.local`, `nas.lan` or `*.home.arpa`). This stops other websites from reaching it through your browser. If you open it by your own domain name, including through a reverse proxy, either set a password or add the name to `BRISK_ALLOWED_HOSTS`.
 
 Forgotten your password? Delete `data/auth.json` on the server and restart Brisk Budget.
 
@@ -105,7 +108,7 @@ The same tools are offered two ways, with the same names and arguments:
 - **MCP** at `/mcp` (Streamable HTTP), for Claude, Claude Code and other MCP apps. For Claude Code: `claude mcp add --transport http brisk-budget http://your-server:3000/mcp --header "Authorization: Bearer <key>"`
 - **HTTP API**: `GET /api/agent` lists the tools; `POST /api/agent/tools/<name>` runs one with its arguments as JSON. Send the key as `Authorization: Bearer <key>`. The key also works on every other API endpoint.
 
-Agents can change anything you can in the app, except signing in, the password and AI access itself. Treat a full-access key like a password, and use HTTPS if agents reach Brisk Budget over the internet.
+Agents can change anything you can in the app, except signing in, the password, AI access itself, deleting backups and uploading a backup to restore (they can restore a saved one, which keeps a safety copy first), so whatever an agent does can be undone. Treat a full-access key like a password, and use HTTPS if agents reach Brisk Budget over the internet.
 
 ## Development
 

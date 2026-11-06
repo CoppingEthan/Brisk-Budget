@@ -184,12 +184,20 @@ install_node() {
   DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs </dev/null
 }
 
+# Packages' install scripts never run: this is root, and Brisk Budget's dependencies don't need them
 npm_install() {
   if [ -f package-lock.json ]; then
-    npm ci --omit=dev --no-audit --no-fund --update-notifier=false --loglevel=error </dev/null
+    npm ci --omit=dev --ignore-scripts --no-audit --no-fund --update-notifier=false --loglevel=error </dev/null
   else
-    npm install --omit=dev --no-audit --no-fund --update-notifier=false --loglevel=error </dev/null
+    npm install --omit=dev --ignore-scripts --no-audit --no-fund --update-notifier=false --loglevel=error </dev/null
   fi
+}
+
+# The code belongs to root, so the app (or anything running as its user) can't change what root
+# runs at the next update; the app owns only its data and backups
+set_owners() {
+  chown -R root:root "$APP_DIR"
+  chown -R "$APP_USER:$APP_USER" "$@"
 }
 
 # Put the previous version and its data back. Runs every step even if one fails, and always
@@ -226,7 +234,7 @@ rollback() {
     systemctl daemon-reload
   fi
   npm_install || warn "Couldn't reinstall the previous version's dependencies"
-  chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+  set_owners "$(real_path "$DATA_DIR")" "$(real_path "$BACKUPS_DIR")"
   systemctl start "$APP_NAME"
   if answers; then
     warn "The previous version is running again. Your data is as it was before the update."
@@ -415,13 +423,15 @@ fi
 DATA_REAL="$(real_path "$DATA_DIR")"
 BACKUPS_REAL="$(real_path "$BACKUPS_DIR")"
 mkdir -p "$DATA_REAL" "$BACKUPS_REAL"
-chown -R "$APP_USER:$APP_USER" "$APP_DIR" "$DATA_REAL" "$BACKUPS_REAL"
+set_owners "$DATA_REAL" "$BACKUPS_REAL"
 # Money data and the sign-in secret are for the app's eyes only
 chmod 700 "$DATA_REAL" "$BACKUPS_REAL"
 chmod -R go-rwx "$DATA_REAL" "$BACKUPS_REAL"
 
-LOW_PORT=""
-[ "$APP_PORT" -lt 1024 ] && LOW_PORT="AmbientCapabilities=CAP_NET_BIND_SERVICE"
+# The app needs no special powers, except to listen on a port below 1024 if it's set to
+CAPABILITIES="CapabilityBoundingSet="
+[ "$APP_PORT" -lt 1024 ] && CAPABILITIES="CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE"
 
 step "Configuring the service..."
 cat > "$SERVICE_FILE" <<EOF
@@ -445,9 +455,10 @@ Environment=NODE_ENV=production
 Environment=PORT=${APP_PORT}
 # Your own settings (PORT, HOST, TZ, BRISK_ALLOWED_HOSTS...) go here; updates never change it
 EnvironmentFile=-${ENV_FILE}
-${LOW_PORT}
+${CAPABILITIES}
 
-# Hardening: the app can only write to its data and backups folders, and its files are private
+# Hardening: the app can only write to its data and backups folders, its files are private, and
+# it can't touch the kernel, the clock or other users' processes
 UMask=0077
 NoNewPrivileges=true
 ProtectSystem=strict
@@ -455,8 +466,17 @@ ProtectHome=true
 PrivateTmp=true
 PrivateDevices=true
 ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
 ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
 RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 ReadWritePaths=${APP_DIR}/data ${APP_DIR}/backups ${DATA_REAL} ${BACKUPS_REAL}
 
 [Install]
@@ -528,6 +548,11 @@ if [ -f "$UPDATE_TIMER" ]; then
   echo "Auto-updates:    on, nightly (turn off with: ... | sudo bash -s -- --no-auto-update)"
 else
   echo "Auto-updates:    off (turn on with: ... | sudo bash -s -- --auto-update)"
+fi
+if [ ! -s "$DATA_REAL/auth.json" ]; then
+  echo ""
+  warn "No password is set yet. Until one is, Brisk Budget only answers devices on your own network."
+  warn "Set one in Settings > Security, especially if this server can be reached from the internet."
 fi
 echo ""
 echo "To update later, run the same command again:"

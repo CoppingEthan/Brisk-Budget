@@ -10,11 +10,12 @@ function sleepSync(ms) {
 // path; renaming it over the original (see writeFileAtomic) makes the change in one step.
 export function prepareFile(file, data) {
   const dir = path.dirname(file);
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const tmp = path.join(dir, `.${path.basename(file)}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`);
   let fd;
   try {
-    fd = fs.openSync(tmp, 'w');
+    // Readable by the app alone, whatever umask it was started with (renaming keeps this)
+    fd = fs.openSync(tmp, 'w', 0o600);
     fs.writeFileSync(fd, data);
     fs.fsyncSync(fd);
   } catch (err) {

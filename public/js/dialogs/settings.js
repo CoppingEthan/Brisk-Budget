@@ -480,9 +480,9 @@ const PANELS = {
       <label class="switch" style="margin-bottom:var(--space-4)">
         <input type="checkbox" data-enable ${status.enabled ? 'checked' : ''}>
         <span class="switch-track"></span>
-        <span class="switch-text">Allow AI agents<small>Agents sign in with an access key you create below. Signing in, your password and these settings stay yours alone.</small></span>
+        <span class="switch-text">Allow AI agents<small>Agents sign in with an access key you create below. Signing in, your password, these settings and deleting backups stay yours alone.</small></span>
       </label>
-      ${status.enabled ? html`<div class="alert warning" style="margin-bottom:var(--space-5)">${icon('alert')}<span>An agent with a full-access key can change or delete anything you can. Only give keys to tools you trust, and revoke any you stop using. Backups are kept as usual, and what agents change is listed below.</span></div>` : ''}
+      ${status.enabled ? html`<div class="alert warning" style="margin-bottom:var(--space-5)">${icon('alert')}<span>An agent with a full-access key can change or delete anything you can, except your backups, so whatever it does can be undone. Only give keys to tools you trust, and revoke any you stop using. What agents change is listed below.</span></div>` : ''}
       ${newKey ? html`
         <div class="settings-section key-reveal">
           <h4>${icon('check', { size: 16 })} Access key for “${newKey.name}”</h4>

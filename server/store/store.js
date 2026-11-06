@@ -32,7 +32,7 @@ export class StoreLoadError extends Error {}
 const json = (value) => JSON.stringify(value, null, 2);
 
 function writeSynced(file, data) {
-  const fd = fs.openSync(file, 'w');
+  const fd = fs.openSync(file, 'w', 0o600);
   try {
     fs.writeFileSync(fd, data);
     fs.fsyncSync(fd);
@@ -79,7 +79,8 @@ export class Store {
   }
 
   load() {
-    for (const dir of [this.dataDir, this.txDir, this.iconsDir]) fs.mkdirSync(dir, { recursive: true });
+    // Money data is for the app alone, however it was started
+    for (const dir of [this.dataDir, this.txDir, this.iconsDir]) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     for (const dir of [this.dataDir, this.txDir, this.iconsDir]) cleanTempFiles(dir);
     this.finishInterrupted();
 
@@ -273,8 +274,8 @@ export class Store {
     const stagingTx = path.join(staging, 'transactions');
     const stagingIcons = path.join(staging, 'icons');
     const list = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir) : []);
-    fs.mkdirSync(this.txDir, { recursive: true });
-    fs.mkdirSync(this.iconsDir, { recursive: true });
+    fs.mkdirSync(this.txDir, { recursive: true, mode: 0o700 });
+    fs.mkdirSync(this.iconsDir, { recursive: true, mode: 0o700 });
     for (const name of list(stagingTx)) renameWithRetry(path.join(stagingTx, name), path.join(this.txDir, name));
     for (const name of list(stagingIcons)) renameWithRetry(path.join(stagingIcons, name), path.join(this.iconsDir, name));
     for (const file of Object.values(COLLECTION_FILES).filter(f => f !== COLLECTION_FILES.meta)) {
@@ -312,8 +313,8 @@ export class Store {
   writeAll(data = this.data) {
     const staging = path.join(this.dataDir, `.staging-${Date.now()}`);
     try {
-      fs.mkdirSync(path.join(staging, 'transactions'), { recursive: true });
-      fs.mkdirSync(path.join(staging, 'icons'), { recursive: true });
+      fs.mkdirSync(path.join(staging, 'transactions'), { recursive: true, mode: 0o700 });
+      fs.mkdirSync(path.join(staging, 'icons'), { recursive: true, mode: 0o700 });
       for (const [key, file] of Object.entries(COLLECTION_FILES)) {
         if (data[key] !== undefined) writeSynced(path.join(staging, file), json(data[key]));
       }

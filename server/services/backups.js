@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import AdmZip from 'adm-zip';
-import { badRequest, notFound } from '../lib/errors.js';
+import { badRequest, notFound, HttpError } from '../lib/errors.js';
 import { COLLECTION_FILES, TX_FILE_RE, ICON_FILE_RE } from '../store/store.js';
 import { migrate, NewerDataError, SCHEMA_VERSION } from '../store/migrations/index.js';
 import { newId, isSafeId } from '../lib/ids.js';
@@ -12,8 +12,54 @@ import { sanitizeData } from '../store/sanitize.js';
 
 const KEEP = { auto: 24, safety: 10, manual: 30 };
 const NAME_RE = /^(backup|safety|manual)-[A-Za-z0-9_.-]+\.zip$/;
-const MAX_ENTRIES = 50000;
-const MAX_UNCOMPRESSED = 300 * 1024 * 1024; // guards against zip bombs
+// Limits on what a backup can hold, far above any real one: a backup is a handful of files plus
+// one per account and icon, and years of transactions pack into a few megabytes
+const MAX_ENTRIES = 5000;
+const MAX_NAME_BYTES = 255;
+const MAX_UNCOMPRESSED = 128 * 1024 * 1024;
+const MAX_EXPANSION = 200; // real JSON shrinks to about a tenth; a zip bomb by thousands of times
+const MAX_STRUCTURES = 2000000; // objects and lists in one file, so JSON.parse can't be made to eat all memory
+
+// Check a ZIP's table of contents before handing it to the ZIP reader, which builds an entry for
+// every file and every folder level in it: a small file with a million entries or names thousands
+// of folders deep would use gigabytes doing so. Brisk Budget's own backups have at most one
+// folder level and a few hundred files.
+function checkDirectory(buffer) {
+  const damaged = () => badRequest("That file isn't a valid backup ZIP");
+  // The end-of-directory record sits in the last 22 bytes, plus a comment of up to 65535
+  let end = -1;
+  for (let i = buffer.length - 22; i >= Math.max(0, buffer.length - 22 - 65535); i--) {
+    if (buffer.readUInt32LE(i) === 0x06054b50) { end = i; break; }
+  }
+  if (end < 0) throw damaged();
+  const count = buffer.readUInt16LE(end + 10);
+  const size = buffer.readUInt32LE(end + 12);
+  const start = buffer.readUInt32LE(end + 16);
+  if (count === 0xffff || start === 0xffffffff || count > MAX_ENTRIES) throw badRequest('That backup has too many files');
+  if (start + size > end) throw damaged();
+  let at = start;
+  for (let n = 0; n < count; n++) {
+    if (at + 46 > end || buffer.readUInt32LE(at) !== 0x02014b50) throw damaged();
+    const nameLength = buffer.readUInt16LE(at + 28);
+    const extra = buffer.readUInt16LE(at + 30);
+    const comment = buffer.readUInt16LE(at + 32);
+    if (nameLength > MAX_NAME_BYTES || at + 46 + nameLength > end) throw damaged();
+    const name = buffer.toString('latin1', at + 46, at + 46 + nameLength).replace(/\\/g, '/').replace(/\/$/, '');
+    if (name.split('/').length > 2) throw badRequest("That doesn't look like a Brisk Budget backup (it has folders inside folders)");
+    at += 46 + nameLength + extra + comment;
+  }
+}
+
+// How many objects and lists a JSON text has at most: counting brackets is cheap and stops
+// JSON.parse being fed a text built to use up memory
+function structures(text) {
+  let count = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c === 123 || c === 91) count++; // { [
+  }
+  return count;
+}
 
 const FILE_TO_KEY = Object.fromEntries(Object.entries(COLLECTION_FILES).map(([key, file]) => [file, key]));
 const stamp = (date) => date.toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -33,13 +79,20 @@ export function zipFromData(data) {
 
 // Read a backup ZIP into a dataset, accepting only the files Brisk Budget itself writes.
 // Anything else (including paths that try to climb out of the data folder) is ignored.
-export function dataFromZip(buffer, { limit = MAX_UNCOMPRESSED } = {}) {
-  let zip;
+export function dataFromZip(buffer, options = {}) {
   try {
-    zip = new AdmZip(buffer);
-  } catch {
+    return readZip(buffer, options);
+  } catch (err) {
+    // Whatever the ZIP reader trips over in a damaged file is the file's fault, not the server's
+    if (err instanceof HttpError) throw err;
     throw badRequest("That file isn't a valid backup ZIP");
   }
+}
+
+function readZip(buffer, { limit = MAX_UNCOMPRESSED } = {}) {
+  if (!Buffer.isBuffer(buffer)) throw badRequest("That file isn't a valid backup ZIP");
+  checkDirectory(buffer);
+  const zip = new AdmZip(buffer);
   const entries = zip.getEntries();
   if (entries.length > MAX_ENTRIES) throw badRequest('That backup has too many files');
 
@@ -65,6 +118,7 @@ export function dataFromZip(buffer, { limit = MAX_UNCOMPRESSED } = {}) {
     }
     left -= out.length;
     if (left < 0) throw badRequest('That backup is too large to restore');
+    if (out.length > 65536 && out.length > raw.length * MAX_EXPANSION) throw badRequest(`The backup file ${entry.entryName} unpacks to far more than any real backup`);
     return out;
   };
 
@@ -72,8 +126,9 @@ export function dataFromZip(buffer, { limit = MAX_UNCOMPRESSED } = {}) {
   const ignored = [];
   const parse = (entry) => {
     const buffer = contents(entry);
+    const text = buffer.toString('utf8');
+    if (structures(text) > MAX_STRUCTURES) throw badRequest(`The backup file ${entry.entryName} is far larger than any real backup`);
     try {
-      const text = buffer.toString('utf8');
       return JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
     } catch {
       throw badRequest(`The backup file ${entry.entryName} is damaged`);
@@ -121,7 +176,7 @@ export function createBackups(app) {
   let timers = [];
 
   function ensureDir() {
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   }
 
   function kindOf(name) {

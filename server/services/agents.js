@@ -10,15 +10,19 @@ import { newId } from '../lib/ids.js';
 const KEY_PREFIX = 'bb_';
 const MAX_KEYS = 20;
 const ACTIVITY_KEPT = 200;
+const FAILURES_KEPT = 50;
 const ACCESS = ['full', 'read'];
 
 const hash = (key) => crypto.createHash('sha256').update(key).digest('hex');
 
-// The Authorization header's key, or null when there isn't one
+// The Authorization header's key: null when there isn't one, '' when it's a Bearer header without
+// a usable key. Other kinds (a reverse proxy's own Basic sign-in, which browsers then send with
+// every request) aren't for Brisk Budget and are left alone.
 export function bearerKey(req) {
   const header = String(req.headers?.authorization || '');
+  if (!/^Bearer(\s|$)/i.test(header)) return null;
   const match = /^Bearer\s+(\S+)\s*$/i.exec(header);
-  return match ? match[1] : header ? '' : null;
+  return match ? match[1] : '';
 }
 
 export function createAgents(app) {
@@ -42,7 +46,9 @@ export function createAgents(app) {
 
   function status() {
     const d = data();
-    return { enabled: d.enabled === true, keys: d.keys.map(publicKey), activity: d.activity.slice(-50).reverse() };
+    // The latest changes, with the latest few failed attempts among them
+    const shown = new Set([...d.activity.filter(a => a.ok !== false).slice(-50), ...d.activity.filter(a => a.ok === false).slice(-10)]);
+    return { enabled: d.enabled === true, keys: d.keys.map(publicKey), activity: d.activity.filter(a => shown.has(a)).reverse() };
   }
 
   function setEnabled(body) {
@@ -98,11 +104,17 @@ export function createAgents(app) {
     return { id: found.id, name: found.name, access: found.access };
   }
 
-  // A record of what agents changed (and tried to), shown in Settings › AI agents
+  // A record of what agents changed (and tried to), shown in Settings › AI agents. Failed attempts
+  // are kept apart from changes, so a flood of them can't push real changes out of the record.
   function record(agent, entry) {
     const d = data();
-    d.activity.push({ at: nowIso(), key: agent.name, ...entry });
-    if (d.activity.length > ACTIVITY_KEPT) d.activity.splice(0, d.activity.length - ACTIVITY_KEPT);
+    d.activity.push({ at: nowIso(), key: agent.name, ...entry, action: String(entry.action || '').slice(0, 200) });
+    const changes = d.activity.filter(a => a.ok !== false);
+    const failures = d.activity.filter(a => a.ok === false);
+    if (changes.length > ACTIVITY_KEPT || failures.length > FAILURES_KEPT) {
+      const keep = new Set([...changes.slice(-ACTIVITY_KEPT), ...failures.slice(-FAILURES_KEPT)]);
+      d.activity = d.activity.filter(a => keep.has(a));
+    }
     try {
       store.save('agents');
     } catch {

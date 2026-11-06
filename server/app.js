@@ -10,7 +10,8 @@ import { migrate, schemaVersionOf, SCHEMA_VERSION, NewerDataError } from './stor
 import { sanitizeData } from './store/sanitize.js';
 import { readBody, readJSON, send, sendError, sendJSON } from './http/respond.js';
 import { createStatic } from './http/static.js';
-import { createHostCheck, fromLocalProxy, hostName, refusedMessage } from './http/hosts.js';
+import { createHostCheck, hostName, refusedMessage } from './http/hosts.js';
+import { isLocalNetwork } from './http/network.js';
 import { buildRoutes } from './routes.js';
 import { createAccounts } from './services/accounts.js';
 import { createCategories } from './services/categories.js';
@@ -27,7 +28,7 @@ import { createUpdates } from './services/updates.js';
 import { createHousekeeping } from './services/housekeeping.js';
 import { createSettings, createNotices } from './services/settings.js';
 import { createAgents, bearerKey } from './services/agents.js';
-import { createGateway, personOnly } from './agent/gateway.js';
+import { createGateway, personOnly, PERSON_ONLY_MESSAGE } from './agent/gateway.js';
 
 const JSON_LIMIT = 4 * 1024 * 1024;
 const MCP_LIMIT = 25 * 1024 * 1024; // room for a large statement import
@@ -127,6 +128,7 @@ export function createApp(overrides = {}) {
   const statics = createStatic({ publicDir: PUBLIC_DIR, dev: config.dev, version: APP_VERSION });
   const hostAllowed = createHostCheck({ allowedHosts: config.allowedHosts });
   const refusedHosts = new Set();
+  let refusedOutside = false;
 
   function refuseHost(req, res, url) {
     const message = refusedMessage(req.headers.host);
@@ -136,6 +138,20 @@ export function createApp(overrides = {}) {
       log.warn(`Refused requests for the unrecognised address "${name}". Set a password or add it to BRISK_ALLOWED_HOSTS if it's yours.`);
     }
     if (url.pathname.startsWith('/api/')) sendJSON(req, res, 403, { error: message });
+    else send(req, res, 403, message, { 'Content-Type': 'text/plain; charset=utf-8' });
+    if (!req.complete) req.resume();
+  }
+
+  function refuseOutside(req, res, url) {
+    const message = "Brisk Budget has no password yet, so it only answers devices on your own network. Open it from a device on " +
+      'the same network as the server (or over a VPN or SSH tunnel), then set a password in Settings › Security. After that it can ' +
+      'be reached from anywhere you allow. To answer every network without a password, add BRISK_OPEN_WITHOUT_PASSWORD=1 to its ' +
+      'settings (/etc/default/brisk-budget if it was installed with the install command) and restart it.';
+    if (!refusedOutside) {
+      refusedOutside = true;
+      log.warn(`Refused a request from ${req.socket.remoteAddress}, outside your network, because no password is set. Set a password to use Brisk Budget from anywhere.`);
+    }
+    if (url.pathname.startsWith('/api/') || url.pathname === '/mcp') sendJSON(req, res, 403, { error: message });
     else send(req, res, 403, message, { 'Content-Type': 'text/plain; charset=utf-8' });
     if (!req.complete) req.resume();
   }
@@ -154,7 +170,9 @@ export function createApp(overrides = {}) {
     req.agent = agent;
     const toolCall = url.pathname.startsWith('/api/agent/');
     if (agent) {
-      if (personOnly(url.pathname)) throw forbidden('Signing in, the password and AI agent access can only be changed by a person in the app.');
+      if (personOnly(url.pathname, req.method)) throw forbidden(PERSON_ONLY_MESSAGE);
+      // Uploading a file (a backup to restore) is for a person; agents restore saved backups instead
+      if (route.options.raw) throw forbidden('Uploading files is for a person in the app. An agent can restore a saved backup instead.');
       if (agent.access === 'read' && MUTATING.has(req.method) && !toolCall) throw forbidden("This access key is read-only, so it can't change anything.");
     } else {
       // A custom header can't be sent by another website without permission, which stops pages
@@ -164,7 +182,7 @@ export function createApp(overrides = {}) {
     }
     // Changes an agent makes through the plain API go in the activity log (tools log themselves)
     const logged = agent && MUTATING.has(req.method) && !toolCall;
-    const action = `${req.method} ${url.pathname}`;
+    const action = `${req.method} ${url.pathname}`.slice(0, 200);
     try {
       await runRoute(req, res, url, route, params);
       if (logged) services.agents.record(agent, { via: 'api', action, ok: true });
@@ -214,8 +232,17 @@ export function createApp(overrides = {}) {
     }
     // A request with an access key is checked by the key, wherever it comes from
     const withKey = bearerKey(req) !== null;
-    if (!services.auth.enabled() && !withKey && !hostAllowed(req.headers.host) && !fromLocalProxy(req)) {
+    // Forwarding headers don't change this: any web page can send them, so they can't vouch for a name
+    if (!services.auth.enabled() && !withKey && !hostAllowed(req.headers.host)) {
       refuseHost(req, res, url);
+      return;
+    }
+    // Without a password, someone on the internet could read everything, or set a password first
+    // and lock the owner out. So until one is set, only devices on a private or local network
+    // (home, office, VPN, Tailscale, or a proxy there) are answered. The health check stays open
+    // for uptime monitors; it says nothing about anyone's money.
+    if (!services.auth.enabled() && !withKey && !config.openWithoutPassword && url.pathname !== '/api/health' && !isLocalNetwork(req.socket.remoteAddress)) {
+      refuseOutside(req, res, url);
       return;
     }
     if (url.pathname === '/mcp') {

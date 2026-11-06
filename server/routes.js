@@ -21,9 +21,9 @@ export function buildRoutes(app) {
   // Anyone can reach these two, so they only accept small bodies
   r.post('/api/auth/login', async ({ req, body }) => {
     const result = await s.auth.login(req, body);
-    return reply(200, { ok: true }, result.cookie ? { 'Set-Cookie': result.cookie } : {});
+    return reply(200, { ok: true }, result.cookies.length ? { 'Set-Cookie': result.cookies } : {});
   }, { public: true, limit: 16 * 1024 });
-  r.post('/api/auth/logout', () => reply(200, { ok: true }, { 'Set-Cookie': s.auth.clearCookie() }), { public: true, limit: 16 * 1024 });
+  r.post('/api/auth/logout', ({ req }) => reply(200, { ok: true }, { 'Set-Cookie': s.auth.logout(req) }), { public: true, limit: 16 * 1024 });
 
   // ----- App start-up: everything the interface needs in one request -----
   r.get('/api/bootstrap', ({ req }) => {
@@ -48,7 +48,7 @@ export function buildRoutes(app) {
   r.put('/api/settings', ({ body }) => app.settings.update(body));
   r.put('/api/auth/password', async ({ req, body }) => {
     const result = await s.auth.setPassword(req, body);
-    return reply(200, { ok: true }, { 'Set-Cookie': result.cookie });
+    return reply(200, { ok: true }, { 'Set-Cookie': result.cookies });
   });
   r.delete('/api/auth/password', async ({ req, body }) => {
     const result = await s.auth.removePassword(req, body);

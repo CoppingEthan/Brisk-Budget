@@ -85,9 +85,11 @@ describe('addresses the server answers to without a password (DNS rebinding)', (
       }
     });
 
-    it('answers to any name passed on by a reverse proxy on the same machine', async () => {
-      const res = await get('/api/health', { Host: 'budget.example.com', 'X-Forwarded-For': '203.0.113.9' });
-      assert.equal(res.status, 200);
+    it("can't be talked past with forwarding headers, which any web page can send", async () => {
+      for (const header of [{ 'X-Forwarded-For': '203.0.113.9' }, { 'X-Real-IP': 'x' }, { Forwarded: 'for=x' }]) {
+        assert.equal((await get('/api/bootstrap', { Host: 'attacker.example', ...header })).status, 403, JSON.stringify(header));
+      }
+      assert.equal((await get('/api/bootstrap', { Host: 'budget.example.com', 'X-Forwarded-For': '203.0.113.9' })).status, 403, 'a proxied name needs listing too');
     });
 
     it('once a password is set any name works, because the sign-in cookie never goes to another name', async () => {
