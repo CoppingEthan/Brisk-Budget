@@ -1,5 +1,6 @@
 import { html, render, toElement, uid } from '../core/dom.js';
 import { icon } from '../core/icons.js';
+import { openLayer } from './back.js';
 
 const stack = [];
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -68,6 +69,8 @@ export function openDialog({ title, size = 'md', body = '', footer = null, flush
   else footerEl.remove();
 
   const previous = document.activeElement;
+  // Back closes the dialog (when it could be dismissed anyway) instead of leaving the page
+  const dropLayer = openLayer(() => (controller.dismissible ? controller.close(null) : false));
   let resolveClosed;
   const closed = new Promise(resolve => { resolveClosed = resolve; });
   let isClosed = false;
@@ -83,6 +86,7 @@ export function openDialog({ title, size = 'md', body = '', footer = null, flush
     close(result = null) {
       if (isClosed) return;
       isClosed = true;
+      dropLayer();
       const i = stack.indexOf(controller);
       if (i >= 0) stack.splice(i, 1);
       layer.classList.remove('open');

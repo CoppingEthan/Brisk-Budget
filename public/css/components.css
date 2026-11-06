@@ -142,6 +142,10 @@
   height: 15px;
 }
 
+.icon-btn:active:not(:disabled) {
+  background: var(--glass-lighter);
+}
+
 .spinner {
   display: inline-block;
   width: 18px;
@@ -840,6 +844,7 @@ input[type='checkbox'].checkbox {
 .dialog-body {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain; /* scrolling to the end of a dialog doesn't scroll the page */
   padding: var(--space-6);
 }
 
@@ -869,6 +874,7 @@ input[type='checkbox'].checkbox {
     padding: 0;
   }
 
+  /* A sheet stops short of the status bar (an installed app on an iPhone draws under it) */
   .dialog,
   .dialog.sm,
   .dialog.lg,
@@ -876,7 +882,7 @@ input[type='checkbox'].checkbox {
     max-width: 100%;
     height: auto;
     max-height: 94vh;
-    max-height: 94dvh;
+    max-height: min(94dvh, calc(100dvh - env(safe-area-inset-top) - var(--space-3)));
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     border-bottom: none;
     transform: translateY(40px);
@@ -885,7 +891,7 @@ input[type='checkbox'].checkbox {
 
   .dialog.xl {
     height: 94vh;
-    height: 94dvh;
+    height: min(94dvh, calc(100dvh - env(safe-area-inset-top) - var(--space-3)));
   }
 
   .dialog-header,
@@ -1018,11 +1024,18 @@ input[type='checkbox'].checkbox {
   from { opacity: 0; transform: translateY(8px); }
 }
 
+/* Above the phone tab bar */
+@media (max-width: 1023px) {
+  .toasts {
+    right: calc(var(--space-4) + env(safe-area-inset-right));
+    bottom: calc(var(--tabbar-height) + var(--space-3) + env(safe-area-inset-bottom));
+  }
+}
+
 @media (max-width: 599px) {
   .toasts {
-    left: var(--space-3);
-    right: var(--space-3);
-    bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    left: calc(var(--space-3) + env(safe-area-inset-left));
+    right: calc(var(--space-3) + env(safe-area-inset-right));
     align-items: stretch;
   }
 
@@ -1272,4 +1285,65 @@ input[type='checkbox'].checkbox {
 
 .swatches button[aria-pressed='true'] {
   box-shadow: 0 0 0 2px var(--glass-strong), 0 0 0 4px var(--cat);
+}
+
+/* ---------- Touch screens ---------- */
+/* Controls big enough for a finger (44px, as Apple and Android both advise) */
+@media (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+  }
+
+  .btn-sm {
+    min-height: 38px;
+  }
+
+  .icon-btn,
+  .icon-btn.sm {
+    width: 44px;
+    height: 44px;
+  }
+
+  .input,
+  .select {
+    min-height: 44px;
+  }
+
+  .segmented button,
+  .segmented label {
+    min-height: 36px;
+  }
+
+  .menu-item {
+    min-height: 44px;
+  }
+
+  /* Undo and Reload in particular */
+  .toast .btn {
+    min-height: 40px;
+    padding: 0.4rem 0.9rem;
+  }
+
+  .tab {
+    min-height: 44px;
+  }
+}
+
+/* Above an open sheet's footer, whose buttons are taller here (padding + 44px button + border) */
+@media (pointer: coarse) and (max-width: 599px) {
+  body.has-dialog .toasts {
+    bottom: calc(77px + var(--space-2) + env(safe-area-inset-bottom));
+  }
+}
+
+/* Text boxes at 16px on phones and touch screens: anything smaller and iPhones zoom the page in
+   whenever one is tapped */
+@media (pointer: coarse), (max-width: 1023px) {
+  .input,
+  .select,
+  .textarea,
+  .input-sm,
+  .select-sm {
+    font-size: 16px;
+  }
 }

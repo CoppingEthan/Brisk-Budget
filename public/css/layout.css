@@ -163,7 +163,8 @@
   flex-direction: column;
 }
 
-.topbar {
+.topbar,
+.tabbar {
   display: none;
 }
 
@@ -256,10 +257,15 @@
     bottom: 0;
     width: min(320px, 86vw) !important;
     max-width: none;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left);
     transform: translateX(-102%);
     transition: transform 260ms var(--ease);
     box-shadow: var(--shadow-lg);
     background: var(--glass-strong);
+  }
+
+  .sidebar-scroll {
+    overscroll-behavior: contain;
   }
 
   .app.nav-open .sidebar {
@@ -294,11 +300,156 @@
     align-items: center;
     gap: var(--space-3);
     height: calc(var(--header-height) + env(safe-area-inset-top));
-    padding: env(safe-area-inset-top) var(--space-4) 0;
+    padding: env(safe-area-inset-top) calc(var(--space-4) + env(safe-area-inset-right)) 0 calc(var(--space-5) + env(safe-area-inset-left));
     background: var(--glass-strong);
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
     border-bottom: 1px solid var(--glass-border);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .topbar-logo {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+
+  /* Room at the bottom for the tab bar */
+  .main {
+    padding-bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+  }
+
+  /* The main places along the bottom, within a thumb's reach, with Add in the middle */
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: calc(var(--z-sticky) + 2);
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    background: var(--glass-strong);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border-top: 1px solid var(--glass-border);
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    transition: transform 260ms var(--ease);
+  }
+
+  /* The open drawer has the screen to itself: the bar slides away rather than peeking out,
+     dimmed, beside it */
+  .app.nav-open .tabbar {
+    transform: translateY(100%);
+  }
+
+  .tab-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-1) 2px 0;
+    color: var(--text-muted);
+    font-size: var(--text-2xs);
+    font-weight: 500;
+    text-decoration: none;
+    transition: color var(--fast);
+  }
+
+  .tab-item > span:not(.tab-add-button) {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tab-item svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .tab-item.active {
+    color: var(--text);
+  }
+
+  .tab-item.active svg {
+    color: var(--primary-text);
+  }
+
+  .tab-item:active:not(.tab-add) svg {
+    transform: scale(0.9);
+  }
+
+  .tab-item:focus-visible {
+    box-shadow: inset var(--focus-ring);
+  }
+
+  /* The badge's holder takes no room, so Recurring lines up with the others */
+  .tab-item [data-due] {
+    display: contents;
+  }
+
+  .tab-badge {
+    position: absolute;
+    top: 5px;
+    left: calc(50% + 6px);
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: var(--radius-pill);
+    background: var(--warning);
+    color: #1c1917;
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 17px;
+    text-align: center;
+  }
+
+  .tab-add-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 6px 18px var(--primary-glow);
+    transition: transform var(--fast) var(--ease), background var(--fast);
+  }
+
+  .tab-add .tab-add-button svg {
+    width: 24px;
+    height: 24px;
+    color: #fff;
+  }
+
+  .tab-add:active .tab-add-button {
+    transform: scale(0.92);
+    background: var(--primary-hover);
+  }
+
+  .tab-add:focus-visible {
+    box-shadow: none;
+  }
+
+  .tab-add:focus-visible .tab-add-button {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* Typing on the page (a search, say): the keyboard is up, so the bar steps aside rather than
+     riding on top of it */
+  .app:has(.view :is(input:not([type='checkbox'], [type='radio'], [type='date'], [type='month'], [type='file']), textarea):focus) .tabbar {
+    display: none;
   }
 
   .topbar-title {
@@ -314,7 +465,7 @@
   .page-header {
     position: relative;
     isolation: isolate;
-    padding: var(--space-5) var(--space-4);
+    padding: var(--space-5) calc(var(--space-4) + env(safe-area-inset-right)) var(--space-5) calc(var(--space-4) + env(safe-area-inset-left));
     background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -333,12 +484,37 @@
   }
 
   .page-body {
-    padding: 0 var(--space-4) calc(var(--space-10) + env(safe-area-inset-bottom));
+    padding: 0 calc(var(--space-4) + env(safe-area-inset-right)) var(--space-8) calc(var(--space-4) + env(safe-area-inset-left));
     gap: var(--space-4);
   }
 
   .page-title h1 {
     font-size: 1.3rem;
+  }
+}
+
+/* A phone on its side: slimmer bars leave room for the page, with each tab's name beside its
+   icon */
+@media (max-width: 1023px) and (max-height: 500px) {
+  :root {
+    --header-height: 48px;
+    --tabbar-height: 48px;
+  }
+
+  .tab-item {
+    flex-direction: row;
+    gap: var(--space-2);
+    padding-top: 0;
+    font-size: var(--text-xs);
+  }
+
+  .tab-badge {
+    position: static;
+  }
+
+  .tab-add-button {
+    width: 40px;
+    height: 40px;
   }
 }
 

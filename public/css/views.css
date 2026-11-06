@@ -1517,11 +1517,6 @@ button.tx-payee {
   animation: fade-in 240ms ease-out both;
 }
 
-/* On phones, adding a transaction stays one tap away once the header has scrolled off */
-.account-fab {
-  display: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .ledger-list[data-enter] .day-group,
   .ledger-list[data-enter] > *,
@@ -1580,39 +1575,19 @@ button.tx-payee {
     scroll-margin-top: calc(var(--header-height) + env(safe-area-inset-top) + var(--space-3));
   }
 
-  .account-fab {
-    position: fixed;
-    right: calc(var(--space-4) + env(safe-area-inset-right));
-    bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
-    z-index: calc(var(--z-sticky) + 1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: var(--primary);
-    color: #fff;
-    box-shadow: 0 10px 28px var(--primary-glow), var(--shadow);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(16px) scale(0.9);
-    transition: opacity var(--normal) var(--ease), transform var(--normal) var(--ease), visibility var(--normal);
+  /* Each day's band stays at the top while its transactions scroll past, as in a phone's own
+     lists (clip, unlike hidden, rounds the corners without stopping that) */
+  .ledger-days {
+    overflow: clip;
   }
 
-  /* Room under the last row, so the round button never sits over it */
-  .account-view .page-body {
-    padding-bottom: calc(var(--space-10) + 56px + env(safe-area-inset-bottom));
-  }
-
-  .account-fab.show {
-    opacity: 1;
-    visibility: visible;
-    transform: none;
-  }
-
-  .account-fab:active {
-    transform: scale(0.94);
+  .day-header {
+    position: sticky;
+    top: calc(var(--header-height) + env(safe-area-inset-top));
+    z-index: 2;
+    background: rgba(17, 26, 45, 0.94);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
   }
 }
 
@@ -2852,6 +2827,7 @@ button.tx-payee {
 .settings-panel {
   padding: var(--space-6);
   overflow-y: auto;
+  overscroll-behavior: contain;
   min-height: 0;
 }
 
@@ -2883,6 +2859,13 @@ button.tx-payee {
   margin-bottom: var(--space-3);
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+/* No keyboard to use them with on a phone or tablet */
+@media (hover: none) and (pointer: coarse) {
+  .settings-shortcuts {
+    display: none;
+  }
 }
 
 .settings-toolbar {
@@ -3120,6 +3103,10 @@ button.tx-payee {
 
 /* Tick boxes big enough for a finger (24px is the WCAG minimum target) */
 @media (pointer: coarse) {
+  .selection-bar .btn {
+    min-height: 40px;
+  }
+
   .tx-row > input[type='checkbox'].checkbox,
   .day-header input[type='checkbox'].checkbox {
     width: 24px;
@@ -3216,7 +3203,7 @@ button.tx-payee {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-6);
+  padding: calc(var(--space-6) + env(safe-area-inset-top)) calc(var(--space-6) + env(safe-area-inset-right)) calc(var(--space-6) + env(safe-area-inset-bottom)) calc(var(--space-6) + env(safe-area-inset-left));
 }
 
 .login-card {
@@ -3292,5 +3279,60 @@ button.tx-payee {
 
   .dashboard-greeting img {
     display: none;
+  }
+}
+
+/* ---------- Phones and tablets with the tab bar ---------- */
+@media (max-width: 1023px) {
+  /* The round Add in the tab bar adds to this account, so the header doesn't need its own */
+  .page-actions[data-actions] > [data-add] {
+    display: none;
+  }
+
+  /* Like the rows' boxes, the day boxes only show once a long-press has started selecting */
+  .day-header .checkbox {
+    display: none;
+  }
+
+  .selecting .day-header .checkbox {
+    display: block;
+  }
+}
+
+@media (max-width: 599px) {
+  /* Five keys in two even rows rather than four and a lonely "Done" */
+  .cal-legend {
+    display: grid;
+    grid-template-columns: repeat(3, max-content);
+    gap: var(--space-2) var(--space-4);
+  }
+
+  /* Summary cards: labels on one line where they fit, notes at the foot of each card, so the
+     figures line up across a row */
+  .rec-cards .stat-label {
+    font-size: var(--text-sm);
+  }
+
+  .rec-cards .stat-note {
+    margin-top: auto;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* "Waiting to be logged" says just "Waiting" where it would wrap (as the calendar key does) */
+.rec-label-short {
+  display: none;
+}
+
+@media (max-width: 599px) {
+  .rec-label-long {
+    display: none;
+  }
+
+  .rec-label-short {
+    display: inline;
   }
 }

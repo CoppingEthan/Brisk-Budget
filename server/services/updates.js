@@ -1,9 +1,14 @@
-// Checks GitHub for a newer release so Settings can say "update available". Only the public
-// releases API is contacted, at most twice a day, and it can be switched off in Settings.
+// Checks GitHub for a newer version so Settings can say "update available". It reads the
+// version in package.json on the main branch, because smaller updates are published there without
+// a GitHub release (which the releases API would miss). Only that one public file is fetched, at
+// most twice a day, and the check can be switched off in Settings.
 import fs from 'node:fs';
 import { APP_VERSION, GITHUB_REPO } from '../config.js';
 
 const CHECK_EVERY_MS = 12 * 60 * 60 * 1000;
+const VERSION_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/package.json`;
+const CHANGES_URL = `https://github.com/${GITHUB_REPO}/commits/main`;
+const VERSION_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const TIMER_FILE = '/etc/systemd/system/brisk-budget-update.timer';
 
 // Automatic updates only exist for installs made by deploy.sh (Linux with systemd); anywhere
@@ -37,15 +42,17 @@ export function createUpdates(app) {
   async function check() {
     if (!allowed()) return info();
     try {
-      const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
-        headers: { 'User-Agent': `brisk-budget/${APP_VERSION}`, Accept: 'application/vnd.github+json' },
+      const res = await fetch(VERSION_URL, {
+        headers: { 'User-Agent': `brisk-budget/${APP_VERSION}`, Accept: 'application/json' },
         signal: AbortSignal.timeout(8000)
       });
       if (!res.ok) throw new Error(`GitHub replied ${res.status}`);
-      const release = await res.json();
-      state.latest = String(release.tag_name || '').replace(/^v/, '') || null;
-      state.releaseUrl = release.html_url || null;
-      state.releaseName = release.name || null;
+      const pkg = await res.json();
+      const version = typeof pkg?.version === 'string' ? pkg.version.trim() : '';
+      if (!VERSION_RE.test(version)) throw new Error('GitHub sent a version that could not be read');
+      state.latest = version;
+      state.releaseUrl = CHANGES_URL;
+      state.releaseName = `v${version}`;
       state.error = null;
     } catch (err) {
       state.error = err.message;

@@ -74,6 +74,7 @@
   /* Layout */
   --sidebar-width: 280px;
   --header-height: 60px;
+  --tabbar-height: 58px; /* the phone tab bar, above the home indicator's safe area */
   --content-max: none; /* panels use the full width beside the sidebar */
 
   /* Motion */

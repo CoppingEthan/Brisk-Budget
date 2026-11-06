@@ -285,7 +285,9 @@ test.describe('phone @phone', () => {
     await page.locator('.account-item', { hasText: 'Joint Account' }).click();
     await expect(page.locator('.app.nav-open')).toHaveCount(0);
     await expect(page.locator('.topbar-title')).toHaveText('Joint Account');
-    await page.locator('.page-actions [data-add]').click();
+    // Phones add from the round button in the tab bar (the header's own Add is hidden there)
+    await expect(page.locator('.page-actions [data-add]')).toBeHidden();
+    await page.locator('.tabbar [data-tab="add"]').click();
     const d = await dialog(page);
     await d.locator('[name="payee"]').fill('Phone Test');
     await d.locator('[name="amount"]').fill('3');

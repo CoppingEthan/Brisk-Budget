@@ -122,7 +122,9 @@ export function readIcon(file) {
   });
 }
 
-// Category <option>s: each top-level category followed by its subcategories, indented
+// Category <option>s: each top-level category followed by its subcategories. A subcategory is
+// labelled with its parent ("Food & Drink › Groceries") rather than indented with spaces, which a
+// closed select (and every phone's picker) shows as a gap before the name
 export function categoryOptions(categories, selectedId, { includeTransfer = false, includeSystem = true, placeholder } = {}) {
   const out = [];
   if (placeholder) out.push(html`<option value="">${placeholder}</option>`);
@@ -131,7 +133,7 @@ export function categoryOptions(categories, selectedId, { includeTransfer = fals
     if (c.isSystem && !includeSystem && c.id !== 'cat-uncategorized') continue;
     out.push(html`<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${c.emoji} ${c.name}</option>`);
     for (const s of c.subcategories || []) {
-      out.push(html`<option value="${s.id}" ${s.id === selectedId ? 'selected' : ''}>     ${s.name}</option>`);
+      out.push(html`<option value="${s.id}" ${s.id === selectedId ? 'selected' : ''}>${c.emoji} ${c.name} › ${s.name}</option>`);
     }
   }
   return out;

@@ -1,5 +1,7 @@
 // Hash routes (#/, #/accounts/:id, #/recurring) so reloading keeps you where you were and the
 // browser back button works.
+import { settled } from '../ui/back.js';
+
 const routes = [];
 const listeners = new Set();
 let container = null;
@@ -14,7 +16,9 @@ export function route(pattern, factory) {
   routes.push({ regex, keys, factory });
 }
 
-export function navigate(path, { replace = false } = {}) {
+// Closing a dialog just before (the usual way to get here) takes its history entry off first
+export async function navigate(path, { replace = false } = {}) {
+  await settled();
   const target = `#${path}`;
   if (location.hash === target) return resolve();
   if (replace) history.replaceState(null, '', target);

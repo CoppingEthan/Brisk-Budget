@@ -143,6 +143,9 @@ describe('static fingerprinting (isolated public folder)', () => {
     ].join('\n'));
     for (const f of ['a.js', 'side-effect.js', 'views/b.js', 'views/lazy.js']) fs.writeFileSync(path.join(dir, 'js', f), "import { a } from '../main.js';\n");
     fs.writeFileSync(path.join(dir, 'css', 'app.css'), 'body { background: url(/images/bg.png); } .x { background: url("data:image/svg+xml,abc"); } .y { background: url(\'/images/y.svg\'); }');
+    fs.writeFileSync(path.join(dir, 'sw.js'), "const BUILD = '__ASSET_VERSION__';\nconst FILES = new Set(__SHELL_FILES__);\nimport('./not-rewritten.js');\n");
+    fs.mkdirSync(path.join(dir, 'screenshots'));
+    fs.writeFileSync(path.join(dir, 'screenshots', 'phone.webp'), 'not really');
     statics = createStatic({ publicDir: dir, dev: false, version: '9.8.7' });
     server = http.createServer((req, res) => statics.serve(req, res, new URL(req.url, 'http://localhost')));
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -178,6 +181,25 @@ describe('static fingerprinting (isolated public folder)', () => {
     assert.ok(js.includes("'not an import ./a.js'"), 'ordinary strings untouched');
     const nested = (await rawRequest(port, { path: '/js/views/b.js' })).body.toString();
     assert.ok(nested.includes(`from '../main.js?v=${v}'`));
+  });
+
+  it("gives the service worker the app's fingerprint and the files to keep", async () => {
+    const v = statics.fingerprint();
+    const res = await rawRequest(port, { path: '/sw.js' });
+    assert.equal(res.headers['cache-control'], 'no-cache');
+    const sw = res.body.toString();
+    assert.ok(sw.includes(`const BUILD = '${v}';`));
+    const files = JSON.parse(sw.match(/new Set\((\[.*\])\)/)[1]);
+    // Everything but the page (kept separately), the worker itself and the install screenshots
+    assert.deepEqual(files, ['/css/app.css', '/js/a.js', '/js/main.js', '/js/side-effect.js', '/js/views/b.js', '/js/views/lazy.js']);
+    assert.ok(sw.includes("import('./not-rewritten.js')"), 'no module rewriting in the worker');
+    const html = (await rawRequest(port, { path: '/' })).body.toString();
+    assert.equal(html.includes('sw.js'), false, 'the worker is not preloaded as a module');
+  });
+
+  it('another version of the app gives the worker a new fingerprint, so browsers install it', () => {
+    const other = createStatic({ publicDir: dir, dev: false, version: '9.8.8' });
+    assert.notEqual(other.fingerprint(), statics.fingerprint());
   });
 
   it('fingerprints absolute CSS urls but not data URLs', async () => {

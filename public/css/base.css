@@ -28,6 +28,15 @@ body.has-dialog {
   overflow: hidden;
 }
 
+/* Opened as an installed app there's no address bar to pull down: the page doesn't stretch past
+   its ends, which on an iPhone dragged the top and tab bars along with it */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
 /* The background: a soft blue haze recreated in CSS (no image to download), with darker
    shapes in the lower corners and a fine film grain on top. */
 .backdrop {
@@ -73,6 +82,20 @@ button {
   cursor: pointer;
   background: none;
   border: none;
+}
+
+/* On touch screens: no grey flash over whatever is tapped (controls show their own pressed
+   state), and a quick second tap on a control doesn't zoom the page */
+a,
+button,
+input,
+select,
+textarea,
+label,
+[role='button'],
+[role='tab'] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 button:disabled {
@@ -212,6 +235,36 @@ code {
 
 .boot-message {
   color: var(--text-light);
+}
+
+/* The server can't be reached (offline, or away from its network) */
+.boot.unreachable {
+  padding: calc(var(--space-6) + env(safe-area-inset-top)) calc(var(--space-6) + env(safe-area-inset-right)) calc(var(--space-6) + env(safe-area-inset-bottom)) calc(var(--space-6) + env(safe-area-inset-left));
+}
+
+.unreachable-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 380px;
+  padding: var(--space-8) var(--space-6);
+  background: var(--glass-strong);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.unreachable-card h1 {
+  font-size: var(--text-lg);
+}
+
+.unreachable-card .boot-message {
+  margin-bottom: var(--space-2);
 }
 
 @keyframes boot-pulse {

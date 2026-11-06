@@ -1,7 +1,8 @@
 // Serves the app's files from public/. Every page load asks for index.html fresh; everything it
 // references carries a fingerprint (?v=...) of the whole app, so after an update browsers fetch
 // the new files once and otherwise load straight from cache. Files are compressed once and kept
-// in memory.
+// in memory. The service worker (sw.js) gets the same fingerprint and the list of files it keeps
+// for opening the app offline, so its copy always matches the page's.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -32,10 +33,19 @@ export const CSP = [
   "connect-src 'self'",
   "font-src 'self'",
   "manifest-src 'self'",
+  "worker-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'"
 ].join('; ');
+
+// Always checked with the server rather than kept for a day: the page, the service worker (so an
+// update is noticed straight away) and the manifest (which describes the installed app)
+const ALWAYS_CHECK = new Set(['index.html', 'sw.js', 'site.webmanifest']);
+
+// Files the service worker doesn't keep: the page itself (kept separately), the worker, and the
+// pictures only used when installing the app or launching it on an iPhone
+const NOT_IN_SHELL = /^(index\.html$|sw\.js$|screenshots\/|splash\/)/;
 
 function listFiles(dir, base = dir) {
   const out = [];
@@ -70,9 +80,19 @@ export function createStatic({ publicDir, dev, version }) {
     return modules;
   }
 
+  // Everything the app needs to open, for the service worker to keep (paths without ?v=)
+  function shellFiles() {
+    return listFiles(publicDir).filter(f => !NOT_IN_SHELL.test(f)).map(f => `/${f}`);
+  }
+
   // Fingerprint the app's own references so cached copies are replaced after an update
   function transform(rel, buffer) {
     const v = getFingerprint();
+    if (rel === 'sw.js') {
+      return Buffer.from(buffer.toString('utf8')
+        .replace(/__ASSET_VERSION__/g, v)
+        .replace('__SHELL_FILES__', () => JSON.stringify(shellFiles())));
+    }
     if (rel === 'index.html') {
       const preload = moduleList().map(m => `<link rel="modulepreload" href="${m}?v=${v}">`).join('\n  ');
       return Buffer.from(buffer.toString('utf8')
@@ -154,10 +174,11 @@ export function createStatic({ publicDir, dev, version }) {
       ...SECURITY_HEADERS,
       'Content-Type': entry.type,
       ETag: entry.etag,
-      'Cache-Control': rel === 'index.html' || dev ? 'no-cache' : versioned ? 'public, max-age=31536000, immutable' : 'public, max-age=86400'
+      'Cache-Control': ALWAYS_CHECK.has(rel) || dev ? 'no-cache' : versioned ? 'public, max-age=31536000, immutable' : 'public, max-age=86400'
     };
-    // Any page gets the content rules, not just the app's own
-    if (entry.type.startsWith('text/html')) headers['Content-Security-Policy'] = CSP;
+    // Any page gets the content rules, not just the app's own, and so does the service worker,
+    // which runs under the rules sent with its own script
+    if (entry.type.startsWith('text/html') || rel === 'sw.js') headers['Content-Security-Policy'] = CSP;
     if (req.headers['if-none-match'] === entry.etag) {
       res.writeHead(304, headers);
       res.end();

@@ -163,12 +163,12 @@ export function recurringView() {
       </div>
       ${s.waiting ? html`
         <button type="button" class="stat-card rec-waiting-card" data-jump-waiting title="Go to the payments waiting to be logged">
-          <span class="stat-label">${icon('clock', { size: 16 })}Waiting to be logged</span>
+          <span class="stat-label">${icon('clock', { size: 16 })}<span class="rec-label-long">Waiting to be logged</span><span class="rec-label-short">Waiting</span></span>
           <span class="stat-value warning-text" data-count="waiting" data-value="${shown.waiting ?? ''}">${count(s.waiting)}</span>
           <span class="stat-note">${[s.waitingOut ? `${money(s.waitingOut)} out` : '', s.waitingIn ? `${money(s.waitingIn)} in` : ''].filter(Boolean).join(' · ') || 'Transfers between your accounts'}</span>
         </button>` : html`
         <div class="stat-card rec-waiting-card done">
-          <span class="stat-label">${icon('check', { size: 16 })}Waiting to be logged</span>
+          <span class="stat-label">${icon('check', { size: 16 })}<span class="rec-label-long">Waiting to be logged</span><span class="rec-label-short">Waiting</span></span>
           <span class="stat-value" data-count="waiting" data-value="${shown.waiting ?? ''}">0</span>
           <span class="stat-note">All caught up</span>
         </div>`}

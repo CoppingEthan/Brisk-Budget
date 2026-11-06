@@ -115,7 +115,7 @@ export function openRecurringDialog(item = null, prefill = null) {
           </div>
           <div class="input-group ${preset === 'custom' ? '' : 'hidden'}" data-custom style="max-width:320px;margin-top:var(--space-2)">
             <span class="input-prefix">Every</span>
-            <input class="input tabular" name="interval" type="number" min="1" max="1000" value="${frequency.interval}" style="max-width:90px;border-radius:0">
+            <input class="input tabular" name="interval" type="number" inputmode="numeric" min="1" max="1000" value="${frequency.interval}" style="max-width:90px;border-radius:0">
             <select class="select" name="frequencyType" style="border-top-left-radius:0;border-bottom-left-radius:0">
               ${['days', 'weeks', 'months', 'years'].map(t => html`<option value="${t}" ${t === frequency.type ? 'selected' : ''}>${t}</option>`)}
             </select>
@@ -130,7 +130,7 @@ export function openRecurringDialog(item = null, prefill = null) {
             <label><input type="radio" name="endType" value="on_date" ${end.type === 'on_date' ? 'checked' : ''}>On a date</label>
           </div>
           <div class="input-group ${end.type === 'after_occurrences' ? '' : 'hidden'}" data-end="after_occurrences" style="max-width:260px;margin-top:var(--space-2)">
-            <input class="input tabular" name="endCount" type="number" min="1" max="10000" value="${end.type === 'after_occurrences' ? end.value : 12}">
+            <input class="input tabular" name="endCount" type="number" inputmode="numeric" min="1" max="10000" value="${end.type === 'after_occurrences' ? end.value : 12}">
             <span class="input-prefix" style="border-radius:0 var(--radius) var(--radius) 0">payments${editing ? ` (${item.occurrencesCompleted || 0} done)` : ''}</span>
           </div>
           <input class="input ${end.type === 'on_date' ? '' : 'hidden'}" data-end="on_date" type="date" name="endDate" value="${end.type === 'on_date' ? end.value : ''}" style="max-width:220px;margin-top:var(--space-2)">

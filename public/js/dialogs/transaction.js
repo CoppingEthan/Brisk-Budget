@@ -1,7 +1,8 @@
-import { html, $, on } from '../core/dom.js';
+import { html, $, on, storage, store } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { state, activeAccounts, account as findAccount, changed, UNCATEGORIZED } from '../core/state.js';
+import { navigate } from '../core/router.js';
 import { openDialog } from '../ui/dialog.js';
 import { bindForm, busy, categoryOptions, refreshAfterSave } from '../ui/forms.js';
 import { toast, toastError } from '../ui/toast.js';
@@ -14,6 +15,9 @@ function payeeList(id) {
 
 // On a phone, opening a transaction to look at it shouldn't pop the keyboard up
 const touchScreen = () => matchMedia('(hover: none), (pointer: coarse)').matches;
+
+// The account a transaction was last added to, which the Add button offers first next time
+const LAST_ACCOUNT_KEY = 'briskBudget_lastAccount';
 
 async function deleteTransaction(dialog, accountId, tx, button) {
   let result;
@@ -36,19 +40,36 @@ async function deleteTransaction(dialog, accountId, tx, button) {
   });
 }
 
-// Add or edit a normal transaction. Transfers open the transfer editor instead.
-export function openTransactionDialog({ accountId, transaction = null } = {}) {
+// Add or edit a normal transaction. Transfers open the transfer editor instead. Without an
+// accountId (the Add button on a phone, away from any account) the dialog asks which account.
+export function openTransactionDialog({ accountId = null, transaction = null } = {}) {
   if (transaction?.transferId) return openTransferDialog({ transfer: transaction, accountId });
   const editing = !!transaction;
+  const choosing = !accountId && !editing;
+  const accounts = choosing ? activeAccounts() : [];
+  if (choosing && !accounts.length) {
+    toast('Add an account first, then its transactions', {
+      kind: 'warning',
+      action: { label: 'Add account', run: async () => (await import('./account.js')).openAccountDialog() }
+    });
+    return Promise.resolve(false);
+  }
+  const lastUsed = storage(LAST_ACCOUNT_KEY, null);
+  const preselected = accounts.some(a => a.id === lastUsed) ? lastUsed : accounts[0]?.id;
   const amount = transaction ? Math.abs(transaction.amount) : '';
   const direction = transaction && transaction.amount > 0 ? 'in' : 'out';
   const listId = `payees-${Date.now()}`;
 
   const dialog = openDialog({
     title: editing ? 'Edit transaction' : 'Add transaction',
-    initialFocus: editing && touchScreen() ? false : undefined,
+    initialFocus: editing && touchScreen() ? false : choosing ? '[name="payee"]' : undefined,
     body: html`
       <form class="form-stack" id="tx-form" novalidate>
+        ${choosing ? html`
+          <label class="field">
+            <span class="field-label">Account</span>
+            <select class="select" name="accountId" required>${accounts.map(a => html`<option value="${a.id}" ${a.id === preselected ? 'selected' : ''}>${a.name}</option>`)}</select>
+          </label>` : ''}
         <div class="field-row">
           <label class="field">
             <span class="field-label">Payee</span>
@@ -132,8 +153,10 @@ export function openTransactionDialog({ accountId, transaction = null } = {}) {
     // A negative amount, e.g. "(20.00)", is money out whatever the toggle says
     const signed = value > 0 && toggle.dataset.direction === 'in' ? value : -Math.abs(value);
     const body = { payee: values.payee, amount: signed, date: values.date, categoryId: values.categoryId, description: values.description, notes: values.notes };
+    const target = choosing ? values.accountId : accountId;
     if (editing) await api.updateTransaction(accountId, transaction.id, body);
-    else await api.createTransaction(accountId, body);
+    else await api.createTransaction(target, body);
+    if (!editing) store(LAST_ACCOUNT_KEY, target);
     await refreshAfterSave();
     if (addAnother) {
       toast(`Added "${values.payee}"`, { kind: 'success' });
@@ -146,6 +169,11 @@ export function openTransactionDialog({ accountId, transaction = null } = {}) {
       return;
     }
     dialog.close(true);
+    // Added from elsewhere: say where it went, with a way there
+    if (choosing) {
+      const name = findAccount(target)?.name || 'the account';
+      toast(`Added "${values.payee}" to ${name}`, { kind: 'success', action: { label: 'View', run: () => navigate(`/accounts/${target}`) } });
+    }
   });
   on(dialog.footer, 'click', '[data-again]', (event, button) => submit(button));
   return dialog.closed;

@@ -10,6 +10,7 @@ import { emojiPicker, colourPicker, bindPickers } from '../ui/pickers.js';
 import { accountAvatar } from '../shell/sidebar.js';
 import { closedOnDialog } from './account.js';
 import { today } from '../shared/dates.js';
+import { canInstall, install, isIOS, isStandalone, onInstallChange } from '../core/pwa.js';
 
 const TABS = [
   { id: 'general', label: 'General', icon: 'sliders' },
@@ -32,6 +33,8 @@ export function openSettings(initialTab = 'general') {
     title: 'Settings',
     size: 'xl',
     flush: true,
+    // On a touch screen, start on the tabs rather than a text box, so the keyboard stays down
+    initialFocus: matchMedia('(hover: none), (pointer: coarse)').matches ? '[role="tab"][aria-selected="true"]' : undefined,
     body: html`
       <div class="settings">
         <nav class="settings-nav" aria-label="Settings sections">
@@ -72,6 +75,21 @@ export function openSettings(initialTab = 'general') {
   });
   show(current);
   return dialog.closed;
+}
+
+// Installing Brisk Budget as an app on this device: what's possible here, and how
+function installSection() {
+  if (isStandalone()) return html`<p>Brisk Budget is running as an app on this device.</p>`;
+  if (canInstall()) {
+    return html`
+      <p>Install Brisk Budget to open it from your home screen or app list, in its own window, like any other app.</p>
+      <div class="settings-toolbar" style="margin-top:var(--space-3)"><button type="button" class="btn btn-primary btn-sm" data-install>${icon('download')}Install app</button></div>`;
+  }
+  if (isIOS()) return html`<p>Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>. Brisk Budget then opens from its own icon, without the browser around it.</p>`;
+  if (!window.isSecureContext) {
+    return html`<p>Browsers only install apps from a secure address (one starting https://). Reach Brisk Budget over HTTPS, for example through a reverse proxy with a certificate, to install it. On an iPhone or iPad, Add to Home Screen works either way.</p>`;
+  }
+  return html`<p>Look in your browser's menu for <strong>Install app</strong> or <strong>Add to Home screen</strong>. If neither is there, Brisk Budget is already installed or this browser doesn't install apps.</p>`;
 }
 
 // Why update checks are off, or null when they're on
@@ -633,8 +651,11 @@ const PANELS = {
   // ---------- About & updates ----------
   async about(section, { show }) {
     const panel = fresh(section);
-    const info = state.update || await api.version();
+    let info = state.update || await api.version();
+    // The browser can say it's ready to install at any moment: show the button when it does
+    const stopWatching = onInstallChange(() => (panel.isConnected ? draw(info) : stopWatching()));
     const draw = (u) => {
+      info = u;
       const off = offReason(u);
       // null: not a Linux install with systemd, so there's no way to tell
       const autoKnown = typeof u.autoUpdate === 'boolean';
@@ -655,6 +676,10 @@ const PANELS = {
           </div>
         </div>
         <div class="settings-section">
+          <h4>Install as an app</h4>
+          ${installSection()}
+        </div>
+        <div class="settings-section">
           <h4>Updating</h4>
           ${autoKnown ? html`
             <p>Run the install command again on your server. Your data is backed up first and upgraded automatically. If the new version fails to start, the previous one is put back.</p>
@@ -664,7 +689,7 @@ const PANELS = {
             : html`<p>Update Brisk Budget the same way it was installed here. Your data is backed up first and upgraded automatically when the new version starts.</p>
             <p style="margin-top:var(--space-3)">Brisk Budget can't tell whether automatic updates are set up on this system. The install command's nightly updates are for Linux servers.</p>`}
         </div>
-        <div class="settings-section">
+        <div class="settings-section settings-shortcuts">
           <h4>Keyboard shortcuts</h4>
           <div class="list">
             <div class="list-row"><span class="list-row-main">New transaction (in an account) or recurring payment</span><kbd>N</kbd></div>
@@ -682,6 +707,9 @@ const PANELS = {
           <p class="faint" style="margin-top:var(--space-3)">Made by Ethan Copping. MIT licence.</p>
         </div>
       `);
+      $('[data-install]', panel)?.addEventListener('click', async () => {
+        if (await install()) toast('Installing Brisk Budget', { kind: 'success' });
+      });
       $('[data-goto-general]', panel)?.addEventListener('click', () => {
         show('general');
         $('#tab-general')?.focus();

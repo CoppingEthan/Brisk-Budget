@@ -325,7 +325,7 @@ export function accountView(accountId) {
             <input class="input" type="date" value="${date}" aria-label="Date for ${name}" data-field="date">
             <div class="input-group">
               <span class="input-prefix ${outgoing ? 'negative' : 'positive'}">${outgoing ? '−' : '+'}${state.settings.currencySymbol}</span>
-              <input class="input tabular" type="number" step="0.01" min="0" value="${amount.toFixed(2)}" aria-label="Amount for ${name}" data-field="amount">
+              <input class="input tabular" type="number" inputmode="decimal" step="0.01" min="0" value="${amount.toFixed(2)}" aria-label="Amount for ${name}" data-field="amount">
             </div>
           </div>
           <div class="upcoming-actions">
@@ -886,18 +886,13 @@ export function accountView(accountId) {
     headerObserver = new ResizeObserver(() => root.style.setProperty('--page-header-height', `${header.offsetHeight}px`));
     headerObserver.observe(header);
 
-    // The header's balance pill shows once the big figure has mostly scrolled away. On phones,
-    // where the header scrolls off, a round Add button keeps adding a transaction one tap away.
+    // The header's balance pill shows once the big figure has mostly scrolled away. (On phones,
+    // where the header scrolls off, the tab bar's Add button adds to this account.)
     const hero = $('[data-hero]', root);
-    const fab = $('[data-fab]', root);
     viewObserver = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === hero) header.classList.toggle('hero-in-view', entry.isIntersecting && entry.intersectionRatio >= 0.3);
-        else fab.classList.toggle('show', !entry.isIntersecting);
-      }
+      for (const entry of entries) header.classList.toggle('hero-in-view', entry.isIntersecting && entry.intersectionRatio >= 0.3);
     }, { threshold: [0, 0.3] });
     viewObserver.observe(hero);
-    viewObserver.observe(header);
 
     // "Show in the list" on This month: filter the ledger to that month and scroll to it
     cleanup.push(on(root, 'click', '[data-show-month]', (event, el) => {
@@ -967,7 +962,6 @@ export function accountView(accountId) {
             </div>
           </section>
         </div>
-        <button type="button" class="account-fab" data-add data-fab aria-label="Add transaction" title="Add transaction (N)">${icon('plus', { size: 22 })}</button>
       `);
       renderHeader();
       renderUpcoming();

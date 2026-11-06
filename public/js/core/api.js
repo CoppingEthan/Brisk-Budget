@@ -72,7 +72,7 @@ export const api = {
   dismissNotice: (id) => api.post('/api/notices/dismiss', { id }),
 
   // Auth
-  authStatus: () => api.get('/api/auth/status'),
+  authStatus: (opts) => api.get('/api/auth/status', opts),
   login: (password) => api.post('/api/auth/login', { password }),
   logout: () => api.post('/api/auth/logout'),
   setPassword: (body) => api.put('/api/auth/password', body),

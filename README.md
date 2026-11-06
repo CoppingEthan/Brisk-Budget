@@ -63,7 +63,16 @@ Requires Node.js 20 or newer.
 - **Data check** - Finds and fixes problems such as transfers missing their other side.
 - **Optional password** - Off by default; set one in Settings › Security.
 - **AI agents** - Optionally let an AI assistant such as Claude read and update your data over MCP or an HTTP API, with access keys you control.
-- **Mobile friendly** - Works on phones and tablets, and installs as an app (PWA).
+- **Works like an app on your phone** - A tab bar with adding a transaction one tap away, Back that closes what's open, and it installs to your home screen (see below).
+
+## Install it as an app
+
+Brisk Budget can be installed on your phone, tablet or computer, so it opens from its own icon in its own window, without the browser around it. It keeps a copy of the app itself (never your data) on the device, so it opens straight away, and if your server can't be reached it says so instead of showing an error page. After an update it offers to reload.
+
+- **Android, or Chrome and Edge on a computer**: Settings › About & updates › Install app, or Install app in the browser's menu. A long press on the installed icon offers Add transaction and Recurring.
+- **iPhone and iPad**: tap Share, then Add to Home Screen.
+
+Browsers only install apps from a secure address, so reach Brisk Budget over HTTPS (for example through a reverse proxy with a certificate) or at `localhost`. Add to Home Screen on an iPhone or iPad works over plain HTTP too, without the offline copy.
 
 ## Data Storage
 
@@ -139,7 +148,9 @@ This project was coded with LLM assistance. I provided the concepts, architectur
 
 ## License
 
-MIT License - see LICENSE file for details
+From version 0.4.5, Brisk Budget is source-available under the [Functional Source License, Version 1.1, MIT Future License](LICENSE) (FSL-1.1-MIT). You can use, copy, change and run it for any purpose, including in your own business, except to offer a product or service that competes with Brisk Budget. Two years after each version is released, that version also becomes available under the MIT licence.
+
+Versions up to and including 0.4.4 were released under the MIT licence and stay that way.
 
 ## Author
 
