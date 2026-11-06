@@ -292,9 +292,13 @@ export function dashboardView() {
     seriesAbort = controller;
     box.setAttribute('aria-busy', 'true');
     try {
-      const data = await api.series({ accounts: selected.join(','), range, forecast }, { signal: controller.signal });
+      // A card's own accounts draw that card's figure: debt as what's owed, and archived accounts
+      // counted up to the day they closed
+      const card = CARDS.find(c => sameSet(selected, cardAccounts(c)));
+      const which = card ? { card: card.key } : { accounts: selected.join(',') };
+      const data = await api.series({ ...which, range, forecast }, { signal: controller.signal });
       if (seriesAbort !== controller) return;
-      seriesData = data;
+      seriesData = { ...data, owed: card?.key === 'debt' };
       drawSeries({ animate: true });
     } catch (err) {
       if (err.name === 'AbortError' || seriesAbort !== controller) return;
@@ -307,7 +311,7 @@ export function dashboardView() {
   }
 
   function drawSeries({ animate = false } = {}) {
-    if (seriesData && root.isConnected) renderBalanceChart($('[data-chart]', root), seriesData, { animate });
+    if (seriesData && root.isConnected) renderBalanceChart($('[data-chart]', root), seriesData, { animate, owed: seriesData.owed });
   }
 
   // ----- Money flow -----

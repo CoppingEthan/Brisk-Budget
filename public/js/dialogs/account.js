@@ -3,10 +3,14 @@ import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { state, groups, changed, ACCOUNT_TYPES, LIABILITY_TYPES, ASSET_VALUE_TYPES } from '../core/state.js';
 import { navigate } from '../core/router.js';
-import { openDialog, confirmDialog } from '../ui/dialog.js';
+import { openDialog } from '../ui/dialog.js';
 import { bindForm, readIcon, refreshAfterSave } from '../ui/forms.js';
 import { toast, toastError } from '../ui/toast.js';
 import { parseAmount } from '../shared/money.js';
+import { today } from '../shared/dates.js';
+
+// Types whose value is for something bought: a car, a house
+const BOUGHT_TYPES = ['loan', 'mortgage', 'asset'];
 
 export function iconField(current) {
   return html`
@@ -97,6 +101,18 @@ export function openAccountDialog(account = null) {
           </div>
           <span class="field-help" data-asset-help></span>
         </label>
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">Opened on <span class="faint">(optional)</span></span>
+            <input class="input" name="openedOn" type="date" value="${account?.openedOn || ''}" max="${today()}">
+            <span class="field-help" data-opened-help></span>
+          </label>
+          <label class="field" data-bought-field>
+            <span class="field-label">Bought on <span class="faint">(optional)</span></span>
+            <input class="input" name="valueFrom" type="date" value="${account?.valueFrom || ''}" max="${today()}">
+            <span class="field-help" data-bought-help></span>
+          </label>
+        </div>
         <label class="field" data-rate-field>
           <span class="field-label">Interest rate</span>
           <div class="input-group">
@@ -128,6 +144,13 @@ export function openAccountDialog(account = null) {
       : editing ? 'The balance before the first transaction recorded here.' : 'Leave empty to start from zero.';
     $('[data-asset-field]', form).classList.toggle('hidden', !ASSET_VALUE_TYPES.includes(t));
     $('[data-rate-field]', form).classList.toggle('hidden', t !== 'mortgage');
+    $('[data-bought-field]', form).classList.toggle('hidden', !BOUGHT_TYPES.includes(t));
+    $('[data-opened-help]', form).textContent = t === 'loan' || t === 'mortgage'
+      ? 'The day you took it out. Charts count it from this day.'
+      : "Leave empty if you've had it a while. Charts count it from this day.";
+    $('[data-bought-help]', form).textContent = t === 'mortgage'
+      ? 'When you bought the property. Net worth counts its value from this day.'
+      : t === 'loan' ? 'When you bought what the loan paid for. Net worth counts its value from this day.' : 'Net worth counts its value from this day.';
     $('[data-asset-label]', form).textContent = t === 'mortgage' ? 'Property value' : t === 'loan' ? 'Value of what the loan paid for' : 'Current value';
     $('[data-asset-help]', form).textContent = t === 'mortgage'
       ? 'What the property is worth. Used to show your equity and include the property in net worth.'
@@ -148,22 +171,15 @@ export function openAccountDialog(account = null) {
   updateFields();
 
   on(dialog.footer, 'click', '[data-archive]', async () => {
-    const ok = await confirmDialog({
-      title: 'Archive account',
-      message: `Archive "${account.name}"?`,
-      detail: 'It disappears from the sidebar and charts, but every transaction is kept. You can restore it from Settings › Accounts.',
-      confirmLabel: 'Archive'
-    });
-    if (!ok) return;
+    if (!(await archiveAccountDialog(account))) return;
+    dialog.close(true);
+    navigate('/');
     try {
-      await api.archiveAccount(account.id);
-      dialog.close(true);
-      navigate('/');
       await changed();
-      toast(`Archived "${account.name}"`, { action: { label: 'Undo', run: async () => { await api.restoreAccount(account.id); await changed(); } } });
     } catch (err) {
-      dialog.setError(err.message);
+      toastError(err);
     }
+    toast(`Archived "${account.name}"`, { action: { label: 'Undo', run: async () => { await api.restoreAccount(account.id); await changed(); } } });
   });
 
   bindForm(dialog, form, async (values) => {
@@ -179,7 +195,9 @@ export function openAccountDialog(account = null) {
       type: t,
       startingBalance: LIABILITY_TYPES.includes(t) ? -opening : opening,
       assetValue: ASSET_VALUE_TYPES.includes(t) ? assetValue : null,
-      interestRate: t === 'mortgage' ? rate : null
+      interestRate: t === 'mortgage' ? rate : null,
+      openedOn: values.openedOn || null,
+      valueFrom: BOUGHT_TYPES.includes(t) ? values.valueFrom || null : null
     };
     const iconValue = getIcon();
     if (iconValue !== undefined) body.icon = iconValue;
@@ -195,4 +213,68 @@ export function openAccountDialog(account = null) {
     }
   });
   return dialog.closed;
+}
+
+// The date field shared by archiving and changing an archived account's closing date. A car loan
+// is often settled when the car is sold, so that's the day to give: from then the car no longer
+// counts towards net worth, and the history doesn't drop on the day the account was tidied away.
+function closedOnField(account, value) {
+  const valued = BOUGHT_TYPES.includes(account.type) && account.assetValue;
+  return html`
+    <label class="field">
+      <span class="field-label">Closed on</span>
+      <input class="input" name="closedOn" type="date" value="${value}" max="${today()}" required>
+      <span class="field-help">${valued
+        ? 'If you sold what it paid for, use the day you sold it. Its value stops counting towards your net worth from then.'
+        : 'Your charts count it up to this day.'}</span>
+    </label>`;
+}
+
+// Ask before archiving, and when the account closed. Resolves to true once it's archived.
+export async function archiveAccountDialog(account) {
+  const dialog = openDialog({
+    title: 'Archive account',
+    size: 'sm',
+    // Cancel has focus, so a stray Enter never archives anything
+    initialFocus: '[data-dialog-cancel]',
+    body: html`
+      <form class="form-stack" id="archive-account-form" novalidate>
+        <p>Archive "${account.name}"?</p>
+        <p class="muted" style="font-size:var(--text-sm)">It disappears from the sidebar, but every transaction is kept and its recurring payments are paused. You can restore it any time from Settings › Accounts.</p>
+        ${closedOnField(account, today())}
+      </form>`,
+    footer: html`
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-secondary" data-dialog-cancel>Cancel</button>
+      <button type="submit" form="archive-account-form" class="btn btn-danger">${icon('archive')}Archive</button>`
+  });
+  bindForm(dialog, $('#archive-account-form', dialog.body), async (values) => {
+    await api.archiveAccount(account.id, { closedOn: values.closedOn });
+    dialog.close(true);
+  });
+  return (await dialog.closed) === true;
+}
+
+// Change when an archived account closed. Resolves to true once it's saved.
+export async function closedOnDialog(account) {
+  const current = account.closedOn || (account.archivedAt ? today(new Date(account.archivedAt)) : today());
+  const dialog = openDialog({
+    title: 'Closing date',
+    size: 'sm',
+    body: html`
+      <form class="form-stack" id="closed-on-form" novalidate>
+        <p>When did "${account.name}" close?</p>
+        ${closedOnField(account, current)}
+      </form>`,
+    footer: html`
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-secondary" data-dialog-cancel>Cancel</button>
+      <button type="submit" form="closed-on-form" class="btn btn-primary">Save</button>`
+  });
+  bindForm(dialog, $('#closed-on-form', dialog.body), async (values) => {
+    await api.updateAccount(account.id, { closedOn: values.closedOn });
+    await refreshAfterSave();
+    dialog.close(true);
+  });
+  return (await dialog.closed) === true;
 }

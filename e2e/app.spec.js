@@ -226,10 +226,19 @@ test.describe('settings', () => {
     await page.locator('[data-more]').click();
     await page.getByRole('menuitem', { name: 'Archive account' }).click();
     const d = await dialog(page);
+    // Closed earlier than today: the day the car was sold
+    await d.locator('input[name="closedOn"]').fill('2025-03-14');
     await d.getByRole('button', { name: 'Archive' }).click();
     await expect(page.locator('.account-item', { hasText: 'Car Finance' })).toHaveCount(0);
     await page.locator('[data-open-settings]').click();
     await page.getByRole('tab', { name: 'Accounts' }).click();
+    const row = page.locator('[data-account]', { hasText: 'Car Finance' });
+    await expect(row).toContainText('closed 14 Mar 2025');
+    await row.locator('[data-closed-on]').click();
+    const change = await dialog(page);
+    await change.locator('input[name="closedOn"]').fill('2025-03-21');
+    await change.getByRole('button', { name: 'Save' }).click();
+    await expect(page.locator('[data-account]', { hasText: 'Car Finance' })).toContainText('closed 21 Mar 2025');
     await page.locator('[data-account]', { hasText: 'Car Finance' }).locator('[data-restore]').click();
     await expect(page.locator('.account-item', { hasText: 'Car Finance' })).toHaveCount(1);
   });

@@ -63,7 +63,7 @@ export function buildRoutes(app) {
   r.post('/api/accounts', ({ body }) => created(s.accounts.create(body)));
   r.put('/api/accounts/reorder', ({ body }) => s.accounts.reorder(body));
   r.put('/api/accounts/:id', ({ params, body }) => s.accounts.update(params.id, body));
-  r.delete('/api/accounts/:id', ({ params }) => s.accounts.archive(params.id));
+  r.delete('/api/accounts/:id', ({ params, body }) => s.accounts.archive(params.id, body));
   r.post('/api/accounts/:id/restore', ({ params }) => s.accounts.restore(params.id));
   r.get('/api/icons/:file', ({ params }) => file(s.accounts.icon(params.file), {
     'Content-Type': params.file.endsWith('.png') ? 'image/png' : params.file.endsWith('.webp') ? 'image/webp' : 'image/jpeg',
@@ -136,6 +136,8 @@ export function buildRoutes(app) {
   r.get('/api/dashboard/trend', () => s.dashboard.trend());
   r.get('/api/dashboard/series', ({ query }) => s.dashboard.series({
     accountIds: ids(query.get('accounts')),
+    card: query.get('card') || null,
+    measure: query.get('measure') || null,
     range: query.get('range') || '1m',
     forecastRange: query.get('forecast') || '0'
   }));

@@ -93,6 +93,7 @@ export function sanitizeData(data, { today, nowIso }) {
     setIf(a, 'startingBalance', Number.isFinite(a.startingBalance), round2(Number(a.startingBalance) || 0));
     setIf(a, 'assetValue', a.assetValue === null || a.assetValue === undefined || Number.isFinite(a.assetValue), null);
     setIf(a, 'interestRate', a.interestRate === null || a.interestRate === undefined || Number.isFinite(a.interestRate), null);
+    for (const key of ['openedOn', 'valueFrom', 'closedOn']) setIf(a, key, a[key] === null || a[key] === undefined || isISODate(a[key]), null);
     setIf(a, 'sortOrder', Number.isFinite(a.sortOrder), 0);
     setIf(a, 'active', typeof a.active === 'boolean', a.active !== false);
     setIf(a, 'icon', iconOk(a.icon ?? null), null);

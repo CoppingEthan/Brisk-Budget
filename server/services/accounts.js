@@ -1,8 +1,8 @@
 import { badRequest, notFound, tooLarge } from '../lib/errors.js';
-import { has, requireObject, str, money, num, oneOf, id as idField, idList } from '../lib/validate.js';
+import { has, requireObject, str, money, num, oneOf, date, id as idField, idList } from '../lib/validate.js';
 import { newId } from '../lib/ids.js';
 import { sumBy, toPence, fromPence } from '../../public/js/shared/money.js';
-import { dayOfMonth } from '../../public/js/shared/dates.js';
+import { dayOfMonth, today as localDate } from '../../public/js/shared/dates.js';
 import { ACCOUNT_TYPES, ASSET_VALUE_TYPES } from '../store/defaults.js';
 import { ICON_FILE_RE } from '../store/store.js';
 import { decodeDataUrl, iconHash } from '../store/migrations/003-icon-files.js';
@@ -75,18 +75,44 @@ export function createAccounts(app) {
     item.icon = { file, hash: iconHash(prepared.buffer) };
   }
 
+  // A date for an account's history: optional, and not in the future
+  function pastDate(value, field) {
+    const day = date(value, field);
+    if (day && day > clock.today()) throw badRequest(`${field} can't be in the future`);
+    return day;
+  }
+
+  // When it closed can't be before it opened
+  function checkDates(account) {
+    if (account.openedOn && account.closedOn && account.closedOn < account.openedOn) throw badRequest("The closing date can't be before the day it was opened");
+  }
+
   function readAccountFields(body, account, wasMortgage) {
     if (has(body, 'name')) account.name = str(body.name, 'Account name', { required: true, max: 100 });
     if (has(body, 'type')) account.type = oneOf(body.type, 'Account type', ACCOUNT_TYPES, { required: true });
     if (has(body, 'startingBalance')) account.startingBalance = money(body.startingBalance, 'Starting balance') ?? 0;
     if (has(body, 'assetValue')) account.assetValue = money(body.assetValue, 'Asset value', { min: 0 });
     if (has(body, 'interestRate')) account.interestRate = num(body.interestRate, 'Interest rate', { min: 0, max: 100 });
+    // The day the account was opened (before it, it counts as empty in charts) and the day the
+    // car or house its value is for was bought (its value counts towards net worth from then)
+    if (has(body, 'openedOn')) account.openedOn = pastDate(body.openedOn, 'Opened on');
+    if (has(body, 'valueFrom')) account.valueFrom = pastDate(body.valueFrom, 'Bought on');
+    if (has(body, 'closedOn')) {
+      const closedOn = pastDate(body.closedOn, 'Closed on');
+      if (account.active !== false) {
+        if (closedOn) throw badRequest('Only an archived account has a closing date. Archive it to close it.');
+      } else {
+        account.closedOn = closedOn || dayOfArchive(account);
+      }
+    }
     if (has(body, 'importProfile')) {
       const profile = body.importProfile;
       if (profile !== null && (typeof profile !== 'object' || JSON.stringify(profile).length > 4000)) throw badRequest('Import settings are not valid');
       account.importProfile = profile;
     }
     if (!ASSET_VALUE_TYPES.includes(account.type)) account.assetValue = null;
+    if (!ASSET_VALUE_TYPES.includes(account.type) || account.type === 'investment') account.valueFrom = null;
+    checkDates(account);
     if (account.type !== 'mortgage') {
       account.interestRate = null;
       account.lastInterestAccrual = null;
@@ -108,6 +134,8 @@ export function createAccounts(app) {
       assetValue: null,
       interestRate: null,
       lastInterestAccrual: null,
+      openedOn: null,
+      valueFrom: null,
       icon: null,
       groupId: null,
       sortOrder: nextTopLevelOrder(),
@@ -143,12 +171,22 @@ export function createAccounts(app) {
     return serialize(account);
   }
 
+  // The day an archived account was archived, for one closed before closing dates were recorded
+  function dayOfArchive(account) {
+    const when = account.archivedAt ? new Date(account.archivedAt) : null;
+    return when && !Number.isNaN(when.getTime()) ? localDate(when) : clock.today();
+  }
+
   // Archiving hides an account but keeps everything. Its recurring payments are paused so they
-  // stop asking to be approved.
-  function archive(id) {
+  // stop asking to be approved. `closedOn` (today if not given) is when it closed, or when the car
+  // or house it paid for was sold: it stops counting in charts of the past from that day.
+  function archive(id, body = {}) {
     const account = get(id);
+    const closedOn = has(body, 'closedOn') ? pastDate(body.closedOn, 'Closed on') : null;
+    checkDates({ openedOn: account.openedOn, closedOn });
     account.active = false;
     account.archivedAt = clock.now().toISOString();
+    account.closedOn = closedOn || clock.today();
     let paused = 0;
     for (const r of store.data.recurring) {
       if (r.active === false || r.paused) continue;
@@ -163,6 +201,7 @@ export function createAccounts(app) {
     const account = get(id);
     account.active = true;
     delete account.archivedAt;
+    delete account.closedOn;
     if (account.groupId && !groups().some(g => g.id === account.groupId)) account.groupId = null;
     // Resume the recurring payments that archiving paused (unless another account is still archived)
     let resumed = 0;

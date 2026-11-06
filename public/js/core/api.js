@@ -86,7 +86,7 @@ export const api = {
   // Accounts & groups
   createAccount: (body) => api.post('/api/accounts', body),
   updateAccount: (id, body) => api.put(`/api/accounts/${enc(id)}`, body),
-  archiveAccount: (id) => api.del(`/api/accounts/${enc(id)}`),
+  archiveAccount: (id, body) => api.del(`/api/accounts/${enc(id)}`, body),
   restoreAccount: (id) => api.post(`/api/accounts/${enc(id)}/restore`),
   reorderAccounts: (accountIds) => api.put('/api/accounts/reorder', { accountIds }),
   createGroup: (body) => api.post('/api/account-groups', body),

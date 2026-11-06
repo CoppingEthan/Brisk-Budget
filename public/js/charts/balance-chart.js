@@ -60,7 +60,9 @@ function timeTicks(first, last, room) {
 }
 
 // `animate` draws the line in from the left (new data); a redraw after a resize doesn't
-export function renderBalanceChart(container, { history, forecast = [] }, { animate = false } = {}) {
+// `owed`: the values are money owed (the debt card), so above zero is drawn red rather than green.
+export function renderBalanceChart(container, { history, forecast = [] }, { animate = false, owed = false } = {}) {
+  const [UP, DOWN] = owed ? [RED, GREEN] : [GREEN, RED];
   if (!history.length) {
     render(container, html`<div class="empty"><p>No balance history yet.</p></div>`);
     return;
@@ -132,12 +134,12 @@ export function renderBalanceChart(container, { history, forecast = [] }, { anim
     <svg class="balance-svg ${animate ? 'animate' : ''}" viewBox="0 0 ${width} ${height}" height="${height}" role="img" aria-label="${summary}">
       <defs>
         <linearGradient id="${id}-up" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${GREEN}" stop-opacity="0.38"/>
-          <stop offset="100%" stop-color="${GREEN}" stop-opacity="0.03"/>
+          <stop offset="0%" stop-color="${UP}" stop-opacity="0.38"/>
+          <stop offset="100%" stop-color="${UP}" stop-opacity="0.03"/>
         </linearGradient>
         <linearGradient id="${id}-down" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${RED}" stop-opacity="0.03"/>
-          <stop offset="100%" stop-color="${RED}" stop-opacity="0.38"/>
+          <stop offset="0%" stop-color="${DOWN}" stop-opacity="0.03"/>
+          <stop offset="100%" stop-color="${DOWN}" stop-opacity="0.38"/>
         </linearGradient>
         <clipPath id="${id}-above"><rect x="0" y="0" width="${width}" height="${Math.max(0, split)}"/></clipPath>
         <clipPath id="${id}-below"><rect x="0" y="${split}" width="${width}" height="${Math.max(0, height - split)}"/></clipPath>
@@ -155,11 +157,11 @@ export function renderBalanceChart(container, { history, forecast = [] }, { anim
         <text x="${lastX + 6}" y="${pad.top + 10}" fill="${GREY}" font-size="10">Forecast</text>
         <path class="bc-forecast" d="${forecastPath}" fill="none" stroke="${GREY}" stroke-width="2" stroke-dasharray="7 5" stroke-linecap="round" stroke-linejoin="round"/>
       ` : ''}
-      <path class="bc-line" pathLength="1" d="${linePath}" fill="none" stroke="${GREEN}" stroke-width="${LINE}" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#${id}-above)"/>
-      <path class="bc-line" pathLength="1" d="${linePath}" fill="none" stroke="${RED}" stroke-width="${LINE}" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#${id}-below)"/>
+      <path class="bc-line" pathLength="1" d="${linePath}" fill="none" stroke="${UP}" stroke-width="${LINE}" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#${id}-above)"/>
+      <path class="bc-line" pathLength="1" d="${linePath}" fill="none" stroke="${DOWN}" stroke-width="${LINE}" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#${id}-below)"/>
       ${xLabels.map(l => html`<text x="${l.x}" y="${height - 8}" text-anchor="${l.anchor}" fill="${GREY}" font-size="11">${l.text}</text>`)}
       <line data-hover-line x1="0" x2="0" y1="${pad.top}" y2="${height - pad.bottom}" stroke="#e2e8f0" stroke-dasharray="3 3" opacity="0"/>
-      <circle data-hover-dot r="5" cx="0" cy="0" fill="${GREEN}" stroke="#0f172a" stroke-width="2" opacity="0"/>
+      <circle data-hover-dot r="5" cx="0" cy="0" fill="${UP}" stroke="#0f172a" stroke-width="2" opacity="0"/>
       <rect data-hover-area x="${pad.left}" y="${pad.top}" width="${innerW}" height="${innerH}" fill="transparent" style="cursor:crosshair;touch-action:pan-y"/>
     </svg>
     <div class="chart-tooltip hidden" data-tooltip></div>
@@ -196,7 +198,7 @@ export function renderBalanceChart(container, { history, forecast = [] }, { anim
     const p = all[i];
     const cx = xs[i];
     const cy = y(p.value);
-    const colour = p.isForecast ? GREY : p.value >= 0 ? GREEN : RED;
+    const colour = p.isForecast ? GREY : p.value >= 0 ? UP : DOWN;
     lineEl.setAttribute('x1', cx);
     lineEl.setAttribute('x2', cx);
     lineEl.setAttribute('opacity', '0.6');

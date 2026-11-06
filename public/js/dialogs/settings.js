@@ -2,12 +2,14 @@ import { html, render, on, $, $$ } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { state, changed, archivedAccounts, accountTypeLabel } from '../core/state.js';
-import { money, plural, bytes, dateTime, accountBalanceView } from '../core/format.js';
+import { money, plural, bytes, dateTime, accountBalanceView, date as formatDate } from '../core/format.js';
 import { openDialog, confirmDialog } from '../ui/dialog.js';
 import { bindForm, busy, categoryOptions, refreshAfterSave } from '../ui/forms.js';
 import { toast, toastError } from '../ui/toast.js';
 import { emojiPicker, colourPicker, bindPickers } from '../ui/pickers.js';
 import { accountAvatar } from '../shell/sidebar.js';
+import { closedOnDialog } from './account.js';
+import { today } from '../shared/dates.js';
 
 const TABS = [
   { id: 'general', label: 'General', icon: 'sliders' },
@@ -317,17 +319,26 @@ const PANELS = {
     const archived = archivedAccounts();
     render(panel, html`
       <h3>Archived accounts</h3>
-      <p class="panel-hint">Archived accounts are hidden from the sidebar and charts. Their transactions are kept, so you can bring them back any time.</p>
+      <p class="panel-hint">Archived accounts are hidden from the sidebar. Their transactions are kept, so you can bring them back any time. Charts of the past count each one up to the day it closed: if a loan paid for a car you've sold, set that to the day you sold it.</p>
       ${archived.length ? html`<div class="list">${archived.map(a => {
         const view = accountBalanceView(a);
+        const closed = a.closedOn || (a.archivedAt ? today(new Date(a.archivedAt)) : null);
         return html`
           <div class="list-row" data-account="${a.id}">
             ${accountAvatar(a)}
-            <div class="list-row-main"><span class="list-row-title">${a.name}</span><span class="list-row-meta">${accountTypeLabel(a.type)} · ${view.label.toLowerCase()} ${view.text}</span></div>
+            <div class="list-row-main"><span class="list-row-title">${a.name}</span><span class="list-row-meta">${accountTypeLabel(a.type)}${closed ? ` · closed ${formatDate(closed)}` : ''} · ${view.label.toLowerCase()} ${view.text}</span></div>
+            <button type="button" class="icon-btn sm" data-closed-on aria-label="Change when ${a.name} closed" title="Change the closing date">${icon('calendar')}</button>
             <button type="button" class="btn btn-secondary btn-sm" data-restore>${icon('undo')}Restore</button>
           </div>`;
       })}</div>` : html`<div class="empty compact">${icon('archive')}<p>No archived accounts.</p></div>`}
     `);
+    on(panel, 'click', '[data-closed-on]', async (e, el) => {
+      const account = archived.find(a => a.id === el.closest('[data-account]').dataset.account);
+      if (account && await closedOnDialog(account)) {
+        toast('Closing date saved', { kind: 'success' });
+        PANELS.accounts(section);
+      }
+    });
     on(panel, 'click', '[data-restore]', async (e, el) => {
       const id = el.closest('[data-account]').dataset.account;
       await busy(el, async () => {

@@ -1,5 +1,5 @@
 // Dashboard numbers, worked out on the server so the browser only receives what it draws.
-import { addDays, addMonths, dateSteps, diffDays, isISODate, maxDate, today as localDate } from '../../public/js/shared/dates.js';
+import { addDays, addMonths, dateSteps, diffDays, isISODate, maxDate, minDate, today as localDate } from '../../public/js/shared/dates.js';
 import { upcoming } from '../../public/js/shared/recurrence.js';
 import { toPence, fromPence, round2 } from '../../public/js/shared/money.js';
 import { INCOME_CATEGORY_ID, TRANSFER_CATEGORY_ID, UNCATEGORIZED_ID } from '../store/defaults.js';
@@ -13,6 +13,20 @@ const INCOME_GREEN = '#34d399';
 // balance. On a mortgage or loan it's what the debt paid for, so value + balance owed = equity.
 const VALUE_REPLACES_BALANCE = ['investment', 'asset'];
 const VALUE_ADDS_TO_BALANCE = ['loan', 'mortgage'];
+const DEBT_TYPES = ['credit', 'loan', 'mortgage'];
+
+// What a chart line adds up: 'worth' (balances plus any value, as in net worth), 'balance' (the
+// balances alone) or 'debt' (money actually owed on cards, loans and mortgages, as a positive amount)
+const MEASURES = ['worth', 'balance', 'debt'];
+
+// The dashboard cards. A card's chart uses the same accounts and sums as the card, and also counts
+// archived accounts of those types up to the day they closed, so closing one isn't drawn as a jump.
+const CARDS = {
+  netWorth: { types: null, measure: 'worth' },
+  cash: { types: ['bank'], measure: 'balance' },
+  savings: { types: ['savings', 'investment'], measure: 'worth' },
+  debt: { types: DEBT_TYPES, measure: 'debt' }
+};
 
 // Own keys only, so '?range=constructor' is an unknown range rather than Object.prototype
 const rangeOf = (range) => (typeof range === 'string' && Object.hasOwn(RANGES, range) ? RANGES[range] : null);
@@ -47,56 +61,85 @@ export function createDashboard(app) {
     return 0;
   }
 
+  // The days an account counts in charts of the past.
+  // - Its balance counts from the day it was opened (from the start when no date is set) until
+  //   it closed. An account always counts on days it has transactions, so a transfer to or from
+  //   it moves money rather than making it appear or vanish.
+  // - A car or house value counts only while it was owned: from the day it was bought (or the
+  //   account opened; with neither set and no opening balance, its first transaction) until the
+  //   day the account closed, which is also the day to give when what it paid for was sold.
+  // Dates are the first day something counts (`from`) and the first day it no longer does (`until`).
+  function lifetime(account, txs) {
+    const first = txs.length ? txs[0].date : null;
+    const last = txs.length ? txs[txs.length - 1].date : null;
+    const from = account.openedOn ? (first ? minDate(account.openedOn, first) : account.openedOn) : null;
+    const valueFrom = account.valueFrom || account.openedOn || (toPence(account.startingBalance) === 0 ? first : null);
+    if (account.active !== false) return { from, valueFrom, until: null, valueUntil: null };
+    // Accounts archived before either date was recorded stop the day after their last transaction
+    const closed = account.closedOn || dayOf(account.archivedAt)
+      || addDays(maxDate(dayOf(account.createdAt) || '1900-01-01', last || '1900-01-01'), 1);
+    return { from, valueFrom, until: last ? maxDate(closed, addDays(last, 1)) : closed, valueUntil: closed };
+  }
+
+  // An account's three figures (in pence) at the end of each of `dates`: what it's worth (its
+  // balance plus any value it was owned for that day), its balance, and the money owed on it.
+  // All three are 0 on days the account doesn't count.
+  function figures(account, dates, today) {
+    const txs = [...txsOf(account)].sort((a, b) => a.date.localeCompare(b.date));
+    const life = lifetime(account, txs);
+    const offset = valueOffset(account, balanceOn(account, today));
+    const isDebt = DEBT_TYPES.includes(account.type);
+    const out = { worth: new Array(dates.length).fill(0), balance: new Array(dates.length).fill(0), debt: new Array(dates.length).fill(0) };
+    let running = toPence(account.startingBalance);
+    let i = 0;
+    for (let d = 0; d < dates.length; d++) {
+      const date = dates[d];
+      while (i < txs.length && txs[i].date <= date) running += toPence(txs[i++].amount);
+      if (life.until && date >= life.until) break;
+      if (life.from && date < life.from) continue;
+      const owned = offset && (!life.valueFrom || date >= life.valueFrom) && (!life.valueUntil || date < life.valueUntil);
+      out.balance[d] = running;
+      out.worth[d] = running + (owned ? offset : 0);
+      if (isDebt && running < 0) out.debt[d] = -running;
+    }
+    return out;
+  }
+
   // Everything is as of today, the same as the chart's "now": transactions dated later show up
   // in the forecast on their own dates instead.
   function summary() {
     const today = clock.today();
     let cash = 0, savings = 0, debt = 0, netWorth = 0;
     for (const account of activeAccounts()) {
-      const balance = balanceOn(account, today);
-      const worth = balance + valueOffset(account, balance);
-      switch (account.type) {
-        case 'bank':
-          cash += balance;
-          break;
-        case 'savings':
-        case 'investment':
-          savings += worth;
-          break;
-        case 'credit':
-        case 'loan':
-        case 'mortgage':
-          if (balance < 0) debt -= balance; // only money actually owed
-          break;
-        // Other assets (a house, a car) count towards net worth only
-      }
-      netWorth += worth;
+      const f = figures(account, [today], today);
+      if (account.type === 'bank') cash += f.balance[0];
+      else if (account.type === 'savings' || account.type === 'investment') savings += f.worth[0];
+      // Only money actually owed counts as debt. Other assets (a house, a car) count towards net worth only.
+      debt += f.debt[0];
+      netWorth += f.worth[0];
     }
     return { netWorth: fromPence(netWorth), cash: fromPence(cash), savings: fromPence(savings), debt: fromPence(debt) };
   }
 
+  // Which accounts a card adds up, and which sum: archived ones count up to the day they closed
+  const cardAccounts = (card, { archived = false } = {}) =>
+    store.data.accounts.filter(a => (archived || a.active !== false) && (!CARDS[card].types || CARDS[card].types.includes(a.type)));
+
   // The four summary figures for each of the last `days` days, for the cards' small charts and
-  // their change over the last month. Same rules as summary(); archived accounts are left out.
+  // their change over the last month. The same sums as the cards' big charts, so each one ends on
+  // its card's figure today.
   function trend({ days = 90 } = {}) {
     const today = clock.today();
     const dates = dateSteps(addDays(today, -days), today, 1);
-    const series = { netWorth: [], cash: [], savings: [], debt: [] };
-    for (const key of Object.keys(series)) series[key] = new Array(dates.length).fill(0);
-    for (const account of activeAccounts()) {
-      const txs = [...txsOf(account)].sort((a, b) => a.date.localeCompare(b.date));
-      const offset = valueOffset(account, balanceOn(account, today));
-      let running = toPence(account.startingBalance);
-      let i = 0;
-      for (let d = 0; d < dates.length; d++) {
-        while (i < txs.length && txs[i].date <= dates[d]) running += toPence(txs[i++].amount);
-        const worth = running + offset;
-        series.netWorth[d] += worth;
-        if (account.type === 'bank') series.cash[d] += running;
-        else if (account.type === 'savings' || account.type === 'investment') series.savings[d] += worth;
-        else if (['credit', 'loan', 'mortgage'].includes(account.type) && running < 0) series.debt[d] -= running;
+    const series = {};
+    for (const card of Object.keys(CARDS)) {
+      const values = new Array(dates.length).fill(0);
+      for (const account of cardAccounts(card, { archived: true })) {
+        const f = figures(account, dates, today)[CARDS[card].measure];
+        for (let d = 0; d < dates.length; d++) values[d] += f[d];
       }
+      series[card] = values.map(fromPence);
     }
-    for (const key of Object.keys(series)) series[key] = series[key].map(fromPence);
     return { dates, ...series };
   }
 
@@ -107,33 +150,15 @@ export function createDashboard(app) {
     return all.filter(a => wanted.has(a.id));
   }
 
-  // First day an archived account no longer counts: the day it was archived, or for accounts
-  // archived before that was recorded, the day after its last transaction
-  function archivedFrom(account) {
-    const archived = dayOf(account.archivedAt);
-    if (archived) return archived;
-    let last = dayOf(account.createdAt) || '1900-01-01';
-    for (const t of txsOf(account)) last = maxDate(last, t.date);
-    return addDays(last, 1);
-  }
-
-  // Combined worth of the chosen accounts at the end of each day in [from, to]
-  function history(accounts, from, to, today) {
+  // The chosen accounts' combined figure (a MEASURES name) at the end of each day in [from, to]
+  function history(accounts, from, to, today, measure = 'worth') {
     const totalDays = diffDays(from, to);
     const step = Math.max(1, Math.ceil(totalDays / MAX_POINTS));
     const dates = dateSteps(from, to, step);
     const values = new Array(dates.length).fill(0);
     for (const account of accounts) {
-      const txs = [...txsOf(account)].sort((a, b) => a.date.localeCompare(b.date));
-      const offset = valueOffset(account, balanceOn(account, today));
-      const stop = account.active === false ? archivedFrom(account) : null;
-      let running = toPence(account.startingBalance);
-      let i = 0;
-      for (let d = 0; d < dates.length; d++) {
-        if (stop && dates[d] >= stop) break;
-        while (i < txs.length && txs[i].date <= dates[d]) running += toPence(txs[i++].amount);
-        values[d] += running + offset;
-      }
+      const f = figures(account, dates, today)[measure];
+      for (let d = 0; d < dates.length; d++) values[d] += f[d];
     }
     return dates.map((date, d) => ({ date, value: fromPence(values[d]) }));
   }
@@ -175,16 +200,19 @@ export function createDashboard(app) {
     return { dailyDrift, sigma: Math.sqrt(variance) };
   }
 
-  function forecast(accounts, today, months) {
+  function forecast(accounts, today, months, measure = 'worth') {
     const end = addMonths(today, months);
     const ids = new Set(accounts.map(a => a.id));
+    const debtIds = new Set(accounts.filter(a => DEBT_TYPES.includes(a.type)).map(a => a.id));
     const balances = new Map();
     const events = [];
     let offsets = 0;
     for (const account of accounts) {
       const now = balanceOn(account, today);
       balances.set(account.id, now);
-      offsets += valueOffset(account, now);
+      // Values owned today stay as they are
+      const f = figures(account, [today], today);
+      offsets += f.worth[0] - f.balance[0];
       // Transactions already entered with a later date land on their own dates
       for (const tx of txsOf(account)) {
         if (tx.date > today && tx.date <= end) events.push({ date: tx.date, accountId: account.id, pence: toPence(tx.amount) });
@@ -234,17 +262,23 @@ export function createDashboard(app) {
           e++;
         }
       }
-      let scheduled = offsets;
-      for (const v of balances.values()) scheduled += v;
+      let scheduled = measure === 'worth' ? offsets : 0;
+      for (const [id, v] of balances) {
+        if (measure !== 'debt') scheduled += v;
+        else if (debtIds.has(id) && v < 0) scheduled -= v;
+      }
       const elapsed = diffDays(today, date);
-      const value = scheduled + dailyDrift * elapsed;
+      // Everyday spending on a card adds to what's owed
+      const value = scheduled + (measure === 'debt' ? -1 : 1) * dailyDrift * elapsed;
       const band = 1.28 * sigma * Math.sqrt(elapsed / 30.44);
       points.push({ date, value: round2(value / 100), lower: round2((value - band) / 100), upper: round2((value + band) / 100) });
     }
     return points;
   }
 
-  function series({ accountIds, range = '1m', forecastRange = '0' }) {
+  // A chart line. With `card` it's that dashboard card's sum (see CARDS); otherwise the chosen
+  // accounts' `measure` (worth by default). Choosing every account is the net worth card.
+  function series({ accountIds, card = null, measure = null, range = '1m', forecastRange = '0' }) {
     const r = rangeOf(range);
     if (!r) throw badRequest('Unknown range');
     let forecastMonths = 0;
@@ -253,15 +287,21 @@ export function createDashboard(app) {
       if (!f) throw badRequest('Unknown forecast range');
       forecastMonths = Math.max(1, f.months || 0);
     }
-    const accounts = selected(accountIds);
+    if (card && !Object.hasOwn(CARDS, card)) throw badRequest('Unknown card');
+    if (measure && !MEASURES.includes(measure)) throw badRequest('Unknown measure');
+    let accounts = selected(accountIds);
+    if (!card && !measure && accounts.length > 0 && accounts.length === activeAccounts().length) card = 'netWorth';
+    let pastAccounts = accounts;
+    if (card) {
+      accounts = cardAccounts(card);
+      pastAccounts = cardAccounts(card, { archived: true });
+      measure = CARDS[card].measure;
+    }
+    measure = measure || 'worth';
     const today = clock.today();
     const from = r.days ? addDays(today, -r.days) : addMonths(today, -r.months);
-    // Net worth (every account) also counts archived accounts up to the day they were archived,
-    // so moving the money out of an account before closing it isn't drawn as a jump
-    const everything = accounts.length > 0 && accounts.length === activeAccounts().length;
-    const pastAccounts = everything ? [...accounts, ...store.data.accounts.filter(a => a.active === false)] : accounts;
-    const result = { history: history(pastAccounts, from, today, today), forecast: [] };
-    if (forecastMonths) result.forecast = forecast(accounts, today, forecastMonths);
+    const result = { history: history(pastAccounts, from, today, today, measure), forecast: [] };
+    if (forecastMonths) result.forecast = forecast(accounts, today, forecastMonths, measure);
     return result;
   }
 

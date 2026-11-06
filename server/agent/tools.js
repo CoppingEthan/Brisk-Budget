@@ -16,6 +16,7 @@ const ids = (description) => ({ type: 'array', items: { type: 'string' }, descri
 const object = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
 const ACCOUNT_ID = s('Account id (from list_accounts)');
+const DAY = (description) => ({ type: ['string', 'null'], format: 'date', description: `${description} (YYYY-MM-DD, not in the future; null clears it)` });
 const ICON = { type: ['string', 'null'], description: 'Optional logo: a data URL of a PNG, JPEG or WebP image under 1 MB (square, about 256px, looks best), or null to remove it' };
 const MONEY_NOTE = 'Amounts are in pounds. Money out of an account is negative, money in is positive.';
 
@@ -25,6 +26,8 @@ const accountFields = {
   startingBalance: n('Balance before the first transaction. For credit cards, loans and mortgages, money owed is negative (owe £500 → -500).'),
   assetValue: n('Optional. Investments/assets: what it is worth today (replaces the balance in net worth). Loans/mortgages: value of what the loan paid for (property value), used for equity.'),
   interestRate: n('Mortgages only: yearly interest rate in percent, e.g. 4.29. Interest is then added monthly.'),
+  openedOn: DAY('Optional. The day the account was opened, e.g. the day a loan was taken out. Before it the account counts as empty in charts of the past; leave it out for an account held for a while'),
+  valueFrom: DAY('Loans, mortgages and assets: the day the car or house its value is for was bought. Net-worth history only counts the value from this day (by default from when the account opened)'),
   groupId: s('Optional group id (from list_accounts) to put the account in'),
   icon: ICON
 };
@@ -152,15 +155,17 @@ export const TOOLS = [
   {
     name: 'get_balance_history',
     title: 'Balance history',
-    description: 'Combined balance of some accounts over time, optionally with a forecast from recurring payments.',
+    description: 'Combined balance of some accounts over time, optionally with a forecast from recurring payments. With `card`, the same line as that dashboard card\'s chart (archived accounts count up to the day they closed).',
     readOnly: true,
     input: object({
-      accountIds: ids('Accounts to include (all when left out)'),
+      accountIds: ids('Accounts to include (all when left out, which is the net worth line)'),
+      card: { type: 'string', enum: ['netWorth', 'cash', 'savings', 'debt'], description: 'A dashboard card\'s line instead of chosen accounts: net worth, cash (bank accounts), savings, or debt (money owed, as a positive amount)' },
+      measure: { type: 'string', enum: ['worth', 'balance', 'debt'], description: 'For chosen accounts: worth (balances plus car or house values while owned, the default), balance (balances alone) or debt (money owed)' },
       range: { type: 'string', enum: RANGES, description: 'How far back (default 1m)' },
       forecast: { type: 'string', enum: ['0', ...RANGES], description: 'How far ahead to forecast (default none)' }
     }),
     run: (args, api) => api('GET', '/api/dashboard/series', {
-      query: { ...(args.accountIds?.length ? { accounts: args.accountIds.join(',') } : {}), range: args.range || '1m', forecast: args.forecast || '0' }
+      query: { ...(args.accountIds?.length ? { accounts: args.accountIds.join(',') } : {}), card: args.card, measure: args.measure, range: args.range || '1m', forecast: args.forecast || '0' }
     })
   },
   {
@@ -215,17 +220,17 @@ export const TOOLS = [
   {
     name: 'update_account',
     title: 'Update account',
-    description: 'Change an account\'s name, type, starting balance, current value, interest rate, group or logo. Only the fields given change.',
-    input: object({ accountId: ACCOUNT_ID, ...accountFields }, ['accountId']),
+    description: 'Change an account\'s name, type, starting balance, current value, dates, interest rate, group or logo. Only the fields given change.',
+    input: object({ accountId: ACCOUNT_ID, ...accountFields, closedOn: DAY('Archived accounts only: the day it closed, or the day the car or house it paid for was sold. It stops counting in charts of the past from this day') }, ['accountId']),
     run: (args, api) => api('PUT', `/api/accounts/${enc(args.accountId)}`, { body: without(args, ['accountId']) })
   },
   {
     name: 'archive_account',
     title: 'Archive account',
-    description: 'Archive (close) an account. Its transactions are kept and it can be restored; its recurring payments are paused.',
+    description: 'Archive (close) an account. Its transactions are kept and it can be restored; its recurring payments are paused. Give closedOn when it closed before today, e.g. a car loan settled when the car was sold, so net-worth history drops the car on the right day.',
     destructive: true,
-    input: object({ accountId: ACCOUNT_ID }, ['accountId']),
-    run: (args, api) => api('DELETE', `/api/accounts/${enc(args.accountId)}`)
+    input: object({ accountId: ACCOUNT_ID, closedOn: DAY('The day it closed, or the day the car or house it paid for was sold (default today)') }, ['accountId']),
+    run: (args, api) => api('DELETE', `/api/accounts/${enc(args.accountId)}`, { body: without(args, ['accountId']) })
   },
   {
     name: 'restore_account',

@@ -11,7 +11,7 @@ import { confirmDialog } from '../ui/dialog.js';
 import { toast, toastError } from '../ui/toast.js';
 import { busy, categoryOptions } from '../ui/forms.js';
 import { openTransactionDialog, openTransferDialog } from '../dialogs/transaction.js';
-import { openAccountDialog } from '../dialogs/account.js';
+import { openAccountDialog, archiveAccountDialog } from '../dialogs/account.js';
 import { openImportDialog } from '../dialogs/import.js';
 import { openCategorizeDialog, openConvertDialog, undoChanges } from '../dialogs/bulk.js';
 import { sparkline } from '../charts/sparkline.js';
@@ -185,7 +185,9 @@ export function accountView(accountId) {
   async function loadTrend() {
     const request = ++trendRequest;
     try {
-      const data = await api.series({ accounts: accountId, range: '3m' });
+      const a = account();
+      const secured = a && (a.type === 'loan' || a.type === 'mortgage');
+      const data = await api.series({ accounts: accountId, range: '3m', measure: secured ? 'balance' : undefined });
       if (request !== trendRequest || !root?.isConnected) return;
       trend = data.history?.length ? data.history : null;
     } catch {
@@ -762,15 +764,8 @@ export function accountView(accountId) {
         icon: 'archive',
         danger: true,
         run: async () => {
-          const ok = await confirmDialog({
-            title: 'Archive account',
-            message: `Archive "${a.name}"?`,
-            detail: 'It disappears from the sidebar and charts, but every transaction is kept. Its recurring payments are paused. You can restore it any time from Settings › Accounts.',
-            confirmLabel: 'Archive'
-          });
-          if (!ok) return;
+          if (!(await archiveAccountDialog(a))) return;
           try {
-            await api.archiveAccount(a.id);
             navigate('/');
             await changed();
             toast(`Archived "${a.name}"`, {
