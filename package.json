@@ -36,6 +36,6 @@
     "adm-zip": "^0.5.16"
   },
   "devDependencies": {
-    "@playwright/test": "^1.55.0"
+    "@playwright/test": "^1.65.0"
   }
 }
