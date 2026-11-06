@@ -1,6 +1,7 @@
 // Dashboard numbers, worked out on the server so the browser only receives what it draws.
 import { addDays, addMonths, dateSteps, diffDays, isISODate, maxDate, minDate, today as localDate } from '../../public/js/shared/dates.js';
 import { upcoming } from '../../public/js/shared/recurrence.js';
+import { typicalMonth, historyStart, likelyRange, MONTH_DAYS } from './forecast-model.js';
 import { toPence, fromPence, round2 } from '../../public/js/shared/money.js';
 import { INCOME_CATEGORY_ID, TRANSFER_CATEGORY_ID, UNCATEGORIZED_ID } from '../store/defaults.js';
 import { badRequest } from '../lib/errors.js';
@@ -14,6 +15,8 @@ const INCOME_GREEN = '#34d399';
 const VALUE_REPLACES_BALANCE = ['investment', 'asset'];
 const VALUE_ADDS_TO_BALANCE = ['loan', 'mortgage'];
 const DEBT_TYPES = ['credit', 'loan', 'mortgage'];
+// Types whose value is for something bought (a car, a house) rather than an investment's worth
+const BOUGHT_TYPES = ['loan', 'mortgage', 'asset'];
 
 // What a chart line adds up: 'worth' (balances plus any value, as in net worth), 'balance' (the
 // balances alone) or 'debt' (money actually owed on cards, loans and mortgages, as a positive amount)
@@ -163,83 +166,117 @@ export function createDashboard(app) {
     return dates.map((date, d) => ({ date, value: fromPence(values[d]) }));
   }
 
-  // Everyday spending that isn't on a schedule: an average daily drift plus how much it swings
-  // (for the confidence band). Each account looks back three months, or only as far as its
-  // history goes, so a new account isn't averaged over months it didn't exist.
-  function variableSpend(accounts, today) {
+  // Money that comes and goes without a schedule (everyday spending, irregular income, money
+  // moved to accounts outside the chart) for the chosen accounts: a typical month and how much a
+  // month usually differs from it, in pence (see forecast-model.js).
+  // - Only money crossing the edge of the chosen accounts counts. A transfer between two chosen
+  //   accounts just moves money; a card repayment from a bank account that isn't chosen pays the
+  //   card off.
+  // - Scheduled money is left out, as the forecast adds it on its own dates: recurring payments
+  //   (and their payee's other payments on that account), transfers between the two accounts of a
+  //   recurring transfer, and the charges on a mortgage whose interest Brisk adds.
+  // - Transfers to or from an archived account that isn't part of the chart are left out: that
+  //   arrangement has ended. Archived accounts that are part of it (the net worth line counts them
+  //   up to the day they closed) count like the rest.
+  // - An opening balance counts on the day the account opened, and for a line that includes values
+  //   (net worth), a car or house value counts on the day it was bought and goes on the day it was
+  //   sold. Buying a car swaps money for a car, so that month isn't a huge spending month, and
+  //   selling one doesn't look like a windfall.
+  // - For what's owed, borrowing isn't everyday money: a loan or mortgage's opening balance, and
+  //   money drawn from one, are left out (repayments come from the recurring transfers).
+  // `accounts` are the chosen accounts; `past` adds the archived accounts the net worth line counts.
+  function unscheduled(accounts, today, measure = 'worth', past = accounts) {
+    const owed = measure === 'debt';
+    const chosen = new Set(past.map(a => a.id));
+    const live = new Set(activeAccounts().map(a => a.id));
+    const templates = store.data.recurring.filter(r => r.active !== false);
     // A template's payee only counts as scheduled on that template's own account, so a weekly
     // Tesco shop on the joint account doesn't hide every Tesco spend on the card
-    const templated = new Set(store.data.recurring
-      .filter(r => r.active !== false && r.type !== 'transfer' && r.payee)
-      .map(r => `${r.accountId}|${normalisePayee(r.payee)}`));
-    let dailyDrift = 0;
-    let variance = 0;
-    for (const account of accounts) {
-      const past = txsOf(account).filter(tx => tx.date < today);
-      let earliest = dayOf(account.createdAt) || today;
-      for (const tx of past) if (tx.date < earliest) earliest = tx.date;
-      const start = maxDate(addMonths(today, -3), earliest);
-      const days = diffDays(start, today);
-      if (days < 1) continue;
-      const buckets = [0, 0, 0];
-      let total = 0;
-      for (const tx of past) {
-        if (tx.date < start) continue;
-        if (tx.transferId || tx.categoryId === TRANSFER_CATEGORY_ID || tx.autoInterest || tx.recurringId) continue;
-        if (templated.has(`${account.id}|${normalisePayee(tx.payee)}`)) continue;
-        const idx = Math.min(2, Math.floor((diffDays(start, tx.date) / days) * 3));
-        const pence = toPence(tx.amount);
-        buckets[idx] += pence;
-        total += pence;
+    const templated = new Set(templates.filter(r => r.type !== 'transfer' && r.payee).map(r => `${r.accountId}|${normalisePayee(r.payee)}`));
+    const pairs = new Set(templates.filter(r => r.type === 'transfer').flatMap(r => [`${r.fromAccountId}|${r.toAccountId}`, `${r.toAccountId}|${r.fromAccountId}`]));
+    const flows = [];
+    const dates = [];
+    for (const account of past) {
+      const accrues = account.type === 'mortgage' && Number(account.interestRate) > 0;
+      const txs = [...txsOf(account)].sort((a, b) => a.date.localeCompare(b.date));
+      const life = lifetime(account, txs);
+      const borrowed = owed && (account.type === 'loan' || account.type === 'mortgage');
+      if (account.openedOn && account.openedOn <= today && !borrowed) flows.push({ date: account.openedOn, pence: toPence(account.startingBalance) });
+      const offset = measure === 'worth' && BOUGHT_TYPES.includes(account.type) ? valueOffset(account, balanceOn(account, today)) : 0;
+      if (offset && life.valueFrom && life.valueFrom <= today) flows.push({ date: life.valueFrom, pence: offset });
+      if (offset && life.valueUntil && life.valueUntil <= today) flows.push({ date: life.valueUntil, pence: -offset });
+      for (const tx of txs) {
+        if (tx.date > today) continue;
+        dates.push(tx.date);
+        if (tx.autoInterest || tx.recurringId) continue;
+        if (tx.transferId) {
+          const other = tx.transferAccountId;
+          if (chosen.has(other) || !live.has(other) || pairs.has(`${account.id}|${other}`)) continue;
+          if (borrowed && tx.amount < 0) continue;
+        } else if (tx.categoryId === TRANSFER_CATEGORY_ID || accrues || templated.has(`${account.id}|${normalisePayee(tx.payee)}`)) {
+          continue;
+        }
+        flows.push({ date: tx.date, pence: toPence(tx.amount) });
       }
-      dailyDrift += total / days;
-      const mean = total / 3;
-      // Swings grow with the square root of time, so scale each third of the window to a month
-      variance += (buckets.reduce((s, v) => s + (v - mean) ** 2, 0) / 3) * (30.44 / (days / 3));
     }
-    return { dailyDrift, sigma: Math.sqrt(variance) };
+    return typicalMonth(flows, today, historyStart(dates));
   }
 
-  function forecast(accounts, today, months, measure = 'worth') {
+  // The chosen accounts' figure (a MEASURES name) from today to `months` ahead, with a likely range.
+  // Every open account is played forward, so a loan that one of them pays off is known to end:
+  // - transactions already entered with a later date, on their dates
+  // - recurring payments and transfers (paused or finished ones are left out). A transfer into a
+  //   loan, mortgage or card stops once it's paid off.
+  // - mortgage interest on what's still owed, on its interest day
+  // - plus the chosen accounts' typical unscheduled month, spread evenly over the days, with a likely
+  //   range that holds about 80% of outcomes (see forecast-model.js)
+  function forecast(accounts, today, months, measure = 'worth', past = accounts) {
     const end = addMonths(today, months);
-    const ids = new Set(accounts.map(a => a.id));
-    const debtIds = new Set(accounts.filter(a => DEBT_TYPES.includes(a.type)).map(a => a.id));
-    const balances = new Map();
-    const events = [];
+    const open = activeAccounts();
+    const typeOf = new Map(open.map(a => [a.id, a.type]));
+    const balances = new Map(open.map(a => [a.id, balanceOn(a, today)]));
+    const chosenDebt = accounts.filter(a => DEBT_TYPES.includes(a.type)).map(a => a.id);
+    // Values owned today stay as they are
     let offsets = 0;
     for (const account of accounts) {
-      const now = balanceOn(account, today);
-      balances.set(account.id, now);
-      // Values owned today stay as they are
       const f = figures(account, [today], today);
       offsets += f.worth[0] - f.balance[0];
-      // Transactions already entered with a later date land on their own dates
-      for (const tx of txsOf(account)) {
-        if (tx.date > today && tx.date <= end) events.push({ date: tx.date, accountId: account.id, pence: toPence(tx.amount) });
-      }
     }
 
-    // Scheduled payments from recurring templates (paused or finished ones are left out).
-    // Overdue ones that haven't been approved are still to come, so they count from the next point.
+    const events = [];
+    for (const account of open) {
+      for (const tx of txsOf(account)) {
+        if (tx.date > today && tx.date <= end) events.push({ date: tx.date, to: account.id, pence: toPence(tx.amount) });
+      }
+    }
+    // Overdue occurrences that haven't been logged are still to come, so they count from the next point
     for (const t of store.data.recurring) {
       if (t.active === false || t.paused) continue;
       for (const { date } of upcoming(t, end, { countFrom: today })) {
-        if (t.type === 'transfer') {
-          const value = toPence(Math.abs(t.amount));
-          if (ids.has(t.fromAccountId)) events.push({ date, accountId: t.fromAccountId, pence: -value });
-          if (ids.has(t.toAccountId)) events.push({ date, accountId: t.toAccountId, pence: value });
-        } else if (ids.has(t.accountId)) {
-          events.push({ date, accountId: t.accountId, pence: toPence(t.amount) });
-        }
+        if (t.type === 'transfer') events.push({ date, from: t.fromAccountId, to: t.toAccountId, pence: toPence(Math.abs(t.amount)), transfer: true });
+        else events.push({ date, to: t.accountId, pence: toPence(t.amount) });
       }
     }
     events.sort((a, b) => a.date.localeCompare(b.date));
 
-    const mortgages = accounts
+    const mortgages = open
       .filter(a => a.type === 'mortgage' && Number(a.interestRate) > 0)
       .map(a => ({ id: a.id, monthlyRate: Number(a.interestRate) / 100 / 12, day: a.interestDay || undefined, next: addMonths(a.lastInterestAccrual || today, 1, a.interestDay || undefined) }));
 
-    const { dailyDrift, sigma } = variableSpend(accounts, today);
+    const move = (id, pence) => { if (balances.has(id)) balances.set(id, balances.get(id) + pence); };
+    function apply(ev) {
+      if (!ev.transfer) return move(ev.to, ev.pence);
+      let pence = ev.pence;
+      // Paying into a debt stops once nothing is owed
+      if (balances.has(ev.to) && DEBT_TYPES.includes(typeOf.get(ev.to))) pence = Math.max(0, Math.min(pence, -balances.get(ev.to)));
+      move(ev.from, -pence);
+      move(ev.to, pence);
+    }
+
+    // Closed accounts only matter to net worth, where a car sold and its value going cancel out;
+    // their old repayments won't happen again
+    const everyday = unscheduled(accounts, today, measure, measure === 'worth' ? past : accounts);
+    const daily = everyday.monthly / MONTH_DAYS;
     const totalDays = diffDays(today, end);
     const step = Math.max(1, Math.ceil(totalDays / MAX_POINTS));
     const points = [];
@@ -258,20 +295,23 @@ export function createDashboard(app) {
           if (owed < 0) balances.set(m.id, owed + Math.round(owed * m.monthlyRate));
           m.next = addMonths(m.next, 1, m.day);
         } else {
-          balances.set(ev.accountId, balances.get(ev.accountId) + ev.pence);
+          apply(ev);
           e++;
         }
       }
       let scheduled = measure === 'worth' ? offsets : 0;
-      for (const [id, v] of balances) {
-        if (measure !== 'debt') scheduled += v;
-        else if (debtIds.has(id) && v < 0) scheduled -= v;
+      if (measure === 'debt') {
+        for (const id of chosenDebt) scheduled += Math.max(0, -balances.get(id));
+      } else {
+        for (const account of accounts) scheduled += balances.get(account.id);
       }
       const elapsed = diffDays(today, date);
-      // Everyday spending on a card adds to what's owed
-      const value = scheduled + (measure === 'debt' ? -1 : 1) * dailyDrift * elapsed;
-      const band = 1.28 * sigma * Math.sqrt(elapsed / 30.44);
-      points.push({ date, value: round2(value / 100), lower: round2((value - band) / 100), upper: round2((value + band) / 100) });
+      // Unscheduled spending on a card adds to what's owed
+      let value = scheduled + (measure === 'debt' ? -1 : 1) * daily * elapsed;
+      if (measure === 'debt') value = Math.max(0, value);
+      const band = likelyRange(everyday, elapsed);
+      const lower = measure === 'debt' ? Math.max(0, value - band) : value - band;
+      points.push({ date, value: round2(value / 100), lower: round2(lower / 100), upper: round2((value + band) / 100) });
     }
     return points;
   }
@@ -301,7 +341,7 @@ export function createDashboard(app) {
     const today = clock.today();
     const from = r.days ? addDays(today, -r.days) : addMonths(today, -r.months);
     const result = { history: history(pastAccounts, from, today, today, measure), forecast: [] };
-    if (forecastMonths) result.forecast = forecast(accounts, today, forecastMonths, measure);
+    if (forecastMonths) result.forecast = forecast(accounts, today, forecastMonths, measure, pastAccounts);
     return result;
   }
 

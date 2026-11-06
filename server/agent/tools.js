@@ -155,7 +155,7 @@ export const TOOLS = [
   {
     name: 'get_balance_history',
     title: 'Balance history',
-    description: 'Combined balance of some accounts over time, optionally with a forecast from recurring payments. With `card`, the same line as that dashboard card\'s chart (archived accounts count up to the day they closed).',
+    description: 'Combined balance of some accounts over time, optionally with a forecast: recurring payments and transfers on their dates (loan payments stop once a loan is cleared), mortgage interest, and a typical month of everyday money from the last year (one-offs like buying a car are discounted), with a likely range. With `card`, the same line as that dashboard card\'s chart (archived accounts count up to the day they closed).',
     readOnly: true,
     input: object({
       accountIds: ids('Accounts to include (all when left out, which is the net worth line)'),

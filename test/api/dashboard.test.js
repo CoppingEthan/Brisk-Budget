@@ -104,18 +104,18 @@ describe('dashboard: forecast', () => {
     }
   });
 
-  it('projects everyday spending as a drift with a widening band', async () => {
-    const spender = await makeAccount(s, { name: 'Spender', startingBalance: 5050 });
-    // History from before the three-month window, so the whole window counts
-    await makeTx(s, spender.id, { date: '2026-05-01', amount: -50, payee: 'Long ago' });
-    await makeTx(s, spender.id, { date: '2026-07-20', amount: -100, payee: 'Shop A' });
-    await makeTx(s, spender.id, { date: '2026-08-20', amount: -200, payee: 'Shop B' });
-    await makeTx(s, spender.id, { date: '2026-09-20', amount: -600, payee: 'Shop C' });
+  it('projects a typical month of everyday spending, not a one-off, with a widening band', async () => {
+    const spender = await makeAccount(s, { name: 'Spender', startingBalance: 20000 });
+    // About £300 a month for half a year, then a car bought outright
+    const months = [['2026-04-14', -250], ['2026-05-20', -300], ['2026-06-20', -350], ['2026-07-20', -280], ['2026-08-20', -320], ['2026-09-20', -300]];
+    for (const [date, amount] of months) await makeTx(s, spender.id, { date, amount, payee: `Shop ${date}` });
+    await makeTx(s, spender.id, { date: '2026-10-01', amount: -10000, payee: 'Car dealer' });
     const { forecast } = await s.ok.get(`/api/dashboard/series?range=1w&forecast=1m&accounts=${spender.id}`);
-    assert.equal(forecast[0].value, 4100);
+    assert.equal(forecast[0].value, 8200);
     const last = forecast.at(-1);
     assert.equal(last.date, '2026-11-12');
-    assert.equal(last.value, 3796.74); // £900 over the last 92 days, projected 31 days
+    const drop = forecast[0].value - last.value;
+    assert.ok(drop > 280 && drop < 360, `about £300 a month, not the car (fell £${drop})`);
     assert.ok(last.lower < last.value && last.value < last.upper);
     assert.ok(Math.abs((last.upper - last.value) - (last.value - last.lower)) < 0.02, 'band is symmetric');
     const mid = forecast[10];

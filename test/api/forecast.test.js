@@ -152,7 +152,7 @@ describe('dashboard: everyday-spending drift', () => {
     await makeTx(s, card.id, { date: '2026-05-01', amount: -1, payee: 'Older' });
     for (const date of ['2026-07-20', '2026-08-20', '2026-09-20']) await makeTx(s, card.id, { date, amount: -150, payee: 'TESCO' });
     const { forecast } = await seriesFor(s, [card.id], '1w', '3m');
-    assert.ok(forecast.at(-1).value < forecast[0].value - 400, 'card spending at Tesco still drifts the card down');
+    assert.ok(forecast.at(-1).value < forecast[0].value - 200, 'card spending at Tesco still drifts the card down');
   });
 });
 
@@ -226,5 +226,103 @@ describe('dashboard: money flow labels', () => {
     assert.deepEqual(Object.fromEntries(flows.expenses.map(r => [r.name, r.amount])), { 'Benefits (paid back)': 50 });
     assert.ok(flows.income.every(r => r.color === '#34d399'));
     assert.equal(flows.net, 2190);
+  });
+});
+
+describe('dashboard: what the forecast counts as everyday money', () => {
+  let s;
+  before(async () => { s = await freshServer(); });
+  after(async () => { await s.close(); });
+
+  it("doesn't grow a card's debt forever when it's paid off from a bank account each month", async () => {
+    const bank = await makeAccount(s, { name: 'Bank', startingBalance: 5000 });
+    const card = await makeAccount(s, { name: 'Card', type: 'credit', startingBalance: 0 });
+    for (const month of ['2026-06', '2026-07', '2026-08', '2026-09']) {
+      await makeTx(s, card.id, { date: `${month}-10`, amount: -500, payee: `Shop ${month}` });
+      await s.ok.post('/api/transfers', { fromAccountId: bank.id, toAccountId: card.id, amount: 500, date: `${month}-25` });
+    }
+    await makeTx(s, card.id, { date: '2026-10-10', amount: -500, payee: 'Shop 2026-10' });
+    const debt = byDate((await s.ok.get(`/api/dashboard/series?range=1w&forecast=1y&accounts=${card.id}&measure=debt`)).forecast);
+    assert.equal(debt['2026-10-12'], 500);
+    assert.ok(Math.abs(debt['2027-10-12'] - 500) < 50, `repayments keep the card level, not £6,500 owed (${debt['2027-10-12']})`);
+    // With both chosen, the repayments move money and the spending is what's left
+    const both = byDate((await seriesFor(s, [bank.id, card.id], '1w', '3m')).forecast);
+    const fall = both['2026-10-12'] - both['2027-01-12'];
+    assert.ok(fall > 1350 && fall < 1650, `£500 a month of spending (fell £${fall})`);
+  });
+});
+
+describe('dashboard: loans, mortgages and closed accounts in the forecast', () => {
+  let s;
+  before(async () => { s = await freshServer(); });
+  after(async () => { await s.close(); });
+
+  it('stops paying a loan once it is cleared', async () => {
+    const bank = await makeAccount(s, { name: 'Bank', startingBalance: 2000 });
+    const loan = await makeAccount(s, { name: 'Loan', type: 'loan', startingBalance: -500 });
+    await s.ok.post('/api/recurring', { type: 'transfer', fromAccountId: bank.id, toAccountId: loan.id, amount: 200, startDate: '2026-10-20' });
+    const cash = byDate((await seriesFor(s, [bank.id], '1w', '6m')).forecast);
+    assert.equal(cash['2027-04-12'], 1500, '£200, £200 and then the last £100: £500 in all');
+    const owed = byDate((await s.ok.get(`/api/dashboard/series?range=1w&forecast=6m&accounts=${loan.id}&measure=debt`)).forecast);
+    assert.equal(owed['2026-10-20'], 300);
+    assert.equal(owed['2026-11-20'], 100);
+    assert.equal(owed['2026-12-20'], 0, 'the third payment is only the £100 left');
+  });
+
+  it("counts a mortgage's interest once, not again from interest entered by hand", async () => {
+    const mortgage = await makeAccount(s, { name: 'Mortgage', type: 'mortgage', startingBalance: -120000, interestRate: 6 });
+    for (const date of ['2026-06-30', '2026-07-31', '2026-08-31', '2026-09-30']) {
+      await makeTx(s, mortgage.id, { date, amount: -600, payee: 'Interest', categoryId: 'sub-rent' });
+    }
+    const { forecast } = await seriesFor(s, [mortgage.id], '1w', '3m');
+    const owed = -forecast.at(-1).value;
+    const start = -forecast[0].value;
+    // Three months of 0.5% on about £122,400: about £1,840, not £3,640 with the hand-entered interest too
+    assert.ok(owed - start > 1700 && owed - start < 2000, String(owed - start));
+  });
+
+  it('leaves out payments to an account that has since closed', async () => {
+    const bank = await makeAccount(s, { name: 'Current', startingBalance: 3000 });
+    const old = await makeAccount(s, { name: 'Old loan', type: 'loan', startingBalance: -1000 });
+    for (const date of ['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01', '2026-10-01']) {
+      await s.ok.post('/api/transfers', { fromAccountId: bank.id, toAccountId: old.id, amount: 200, date });
+    }
+    await s.ok.del(`/api/accounts/${old.id}`, { closedOn: '2026-10-01' });
+    const { forecast } = await seriesFor(s, [bank.id], '1w', '6m');
+    assert.equal(forecast.at(-1).value, forecast[0].value, 'the loan is paid off, so its £200 a month has stopped');
+  });
+});
+
+describe('dashboard: buying a car on a loan, in the forecast', () => {
+  let s;
+  let bank;
+  let loan;
+  before(async () => {
+    s = await freshServer();
+    bank = await makeAccount(s, { name: 'Bank', startingBalance: 30000 });
+    // Half a year of steady spending, about £1,000 a month
+    for (const month of ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']) {
+      await makeTx(s, bank.id, { date: `${month}-15`, amount: -1000, payee: `Shops ${month}` });
+    }
+    // Then a £20,000 car: £15,000 borrowed (with £2,000 interest owed on top) and £5,000 paid from the bank
+    loan = await makeAccount(s, { name: 'Car loan', type: 'loan', startingBalance: -2000, assetValue: 20000, openedOn: '2026-09-28', valueFrom: '2026-10-01' });
+    await s.ok.post('/api/transfers', { fromAccountId: loan.id, toAccountId: bank.id, amount: 15000, date: '2026-09-28' });
+    await makeTx(s, bank.id, { date: '2026-10-01', amount: -20000, payee: 'Car dealer' });
+    await makeTx(s, bank.id, { date: '2026-10-05', amount: -1000, payee: 'Shops 2026-10' });
+  });
+  after(async () => { await s.close(); });
+
+  it("treats buying the car as swapping money for a car, not as a month's spending", async () => {
+    const { forecast } = await s.ok.get('/api/dashboard/series?card=netWorth&range=1w&forecast=6m');
+    const fall = forecast[0].value - forecast.at(-1).value;
+    assert.ok(fall > 5000 && fall < 7500, `about £1,000 a month, not thousands more (fell £${fall})`);
+    const last = forecast.at(-1);
+    assert.ok(last.upper - last.lower < 20000, `a likely range from ordinary months, not tens of thousands either side (${last.upper - last.lower})`);
+  });
+
+  it("doesn't treat taking out the loan as a habit of borrowing", async () => {
+    const { forecast } = await s.ok.get('/api/dashboard/series?card=debt&range=1w&forecast=6m');
+    assert.equal(forecast[0].value, 17000);
+    assert.equal(forecast.at(-1).value, 17000, 'no repayments set up and no everyday borrowing: the debt stays put');
   });
 });
