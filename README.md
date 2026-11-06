@@ -1,10 +1,29 @@
 <p align="center">
-  <img src="assets/branding/dark/brisk-budget-logo.svg" alt="Brisk Budget Logo" width="320">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/branding/light/brisk-budget-logo.svg">
+    <img src="assets/branding/dark/brisk-budget-logo.svg" alt="Brisk Budget" width="300">
+  </picture>
+</p>
+
+<p align="center">
+  <strong>A free budgeting app for UK households, with no bank login.</strong><br>
+  Every account in one place, bills and pay day on a calendar, and your balance forecast months ahead.
+</p>
+
+<p align="center">
+  <a href="https://briskbudget.app">Website</a> ·
+  <a href="#quick-deploy-ubuntu--debian">Install</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#a-look-around">Screenshots</a> ·
+  <a href="#install-it-as-an-app">On your phone</a> ·
+  <a href="#ai-agents-mcp-and-api">AI agents</a>
+</p>
+
+<p align="center">
+  <img src="assets/images/devices.webp" alt="Brisk Budget on a laptop, a monitor, a tablet and a phone" width="900">
 </p>
 
 A lightweight, self-hosted personal finance tracker for household finances. No subscriptions, no cloud, no database: just your money, on your server.
-
-![Brisk Budget Dashboard](assets/images/dashboard-screenshot.png)
 
 ## Quick Deploy (Ubuntu / Debian)
 
@@ -64,6 +83,25 @@ Requires Node.js 20 or newer.
 - **Optional password** - Off by default; set one in Settings › Security.
 - **AI agents** - Optionally let an AI assistant such as Claude read and update your data over MCP or an HTTP API, with access keys you control.
 - **Works like an app on your phone** - A tab bar with adding a transaction one tap away, Back that closes what's open, and it installs to your home screen (see below).
+
+## A look around
+
+<p align="center">
+  <img src="assets/images/screen-dashboard.webp" alt="Dashboard: net worth, cash, savings and debt, with a year of history and a year's forecast" width="48%">
+  <img src="assets/images/screen-recurring.webp" alt="Recurring: monthly income and outgoings, and a calendar of what's due" width="48%">
+  <br><sub><b>Dashboard</b> with a forecast and likely range · <b>Bills and pay day</b> on a calendar</sub>
+</p>
+
+<p align="center">
+  <img src="assets/images/screen-flow.webp" alt="Money flow: income on one side, spending by category on the other" width="48%">
+  <img src="assets/images/screen-account.webp" alt="An account's transactions, grouped by day with running balances" width="48%">
+  <br><sub><b>Money flow</b> by category · <b>Transactions</b> grouped by day</sub>
+</p>
+
+<p align="center">
+  <img src="assets/images/phones.webp" alt="On a phone: the dashboard, an account and the bills calendar, with the tab bar along the bottom" width="760">
+  <br><sub><b>On your phone</b>, installed from the browser · all screenshots use demo data</sub>
+</p>
 
 ## Install it as an app
 
